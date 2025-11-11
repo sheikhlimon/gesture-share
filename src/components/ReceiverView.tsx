@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from "react";
-import ConnectionManager from "../utils/connection";
+import createConnectionManager from "../utils/connection-fp";
 
 interface ReceiverViewProps {
-  onConnectionEstablished: (connectionManager: ConnectionManager) => void;
+  onConnectionEstablished: () => void;
   onFileReceived: (fileName: string, fileSize: number) => void;
 }
 
@@ -28,23 +28,27 @@ export const ReceiverView: React.FC<ReceiverViewProps> = ({
     setError("");
 
     try {
-      const connectionManager = ConnectionManager.getInstance();
-      await connectionManager.createConnection();
+      const connectionManager = createConnectionManager();
+      await connectionManager.initializeConnection();
 
       await connectionManager.connectToPeer(peerId.trim());
       setConnectionStatus("connected");
-      onConnectionEstablished(connectionManager);
+      onConnectionEstablished();
 
-      // Listen for file transfers
-      const originalFileEnd =
-        connectionManager["handleFileEnd"].bind(connectionManager);
-      connectionManager["handleFileEnd"] = (data: { fileId: string }) => {
-        const transfer = connectionManager["fileTransfers"].get(data.fileId);
-        if (transfer) {
-          onFileReceived(transfer.fileName, transfer.fileSize);
-        }
-        originalFileEnd(data);
-      };
+      // Set up file transfer handling
+      connectionManager.state.connections.forEach((connection) => {
+        connection.on("data", (data) => {
+          connectionManager.handleFileTransfer(data);
+          if (data.type === "file-end") {
+            const transfer = connectionManager.state.fileTransfers.get(
+              data.fileId,
+            );
+            if (transfer) {
+              onFileReceived(transfer.fileName, transfer.fileSize);
+            }
+          }
+        });
+      });
     } catch {
       setConnectionStatus("error");
       setError("Failed to connect. Please check the peer ID and try again.");

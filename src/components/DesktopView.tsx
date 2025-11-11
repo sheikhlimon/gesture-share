@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { GestureDetector } from "./GestureDetector";
 import { QRDisplay } from "./QRDisplay";
 import { useGestureCapture } from "../hooks/useGestureCapture";
-import ConnectionManager from "../utils/connection";
+import createConnectionManager from "../utils/connection-fp";
 
 interface DesktopViewProps {
   onFileSelect: (file: File) => void;
@@ -15,15 +15,16 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "connected"
   >("idle");
-  const [connectionManager, setConnectionManager] =
-    useState<ConnectionManager | null>(null);
+  const [connectionManager, setConnectionManager] = useState<ReturnType<
+    typeof createConnectionManager
+  > | null>(null);
 
   const { gestures, deleteGesture } = useGestureCapture();
 
   const initializeConnection = useCallback(async () => {
     try {
-      const manager = ConnectionManager.getInstance();
-      const connectionInfo = await manager.createConnection();
+      const manager = createConnectionManager();
+      const connectionInfo = await manager.initializeConnection();
       setPeerId(connectionInfo.peerId);
       setConnectionManager(manager);
 
@@ -57,12 +58,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
         selectedFile &&
         connectionManager?.isConnected()
       ) {
-        const connections = Array.from(
-          connectionManager["connections"].values(),
-        );
-        if (connections.length > 0) {
-          await connectionManager.sendFile(connections[0], selectedFile);
+        try {
+          await connectionManager.sendFile(selectedFile);
           console.log(`File sent: ${selectedFile.name}`);
+        } catch (error) {
+          console.error("Failed to send file:", error);
         }
       }
     },
@@ -114,9 +114,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                     : "Ready to connect"}
               </p>
               {connectionManager?.isConnected() && (
-                <p className="text-sm mt-1">
-                  Connected devices: {connectionManager["connections"].size}
-                </p>
+                <p className="text-sm mt-1">Connection established</p>
               )}
             </div>
           </div>
