@@ -1,8 +1,74 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { GestureDetector } from "./GestureDetector";
 import { QRDisplay } from "./QRDisplay";
-import { useGestureCapture } from "../hooks/useGestureCapture";
-import { Peer } from "peerjs";
+import * as Peer from "peerjs";
+
+interface FileStart {
+  type: "file-start";
+  fileId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+}
+
+interface FileChunk {
+  type: "file-chunk";
+  fileId: string;
+  chunkIndex: number;
+  chunk: ArrayBuffer;
+}
+
+interface FileEnd {
+  type: "file-end";
+  fileId: string;
+}
+
+// Get local IP
+const getLocalIP = async (): Promise<string> => {
+  const webrtcIP = await new Promise<string>((resolve) => {
+    try {
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      });
+      pc.createDataChannel("");
+      pc.createOffer()
+        .then((offer) => pc.setLocalDescription(offer))
+        .then(() => {
+          setTimeout(() => {
+            const lines = pc.localDescription?.sdp?.split("\n") || [];
+            pc.close();
+
+            for (const line of lines) {
+              if (line.includes("candidate:") && line.includes("typ host")) {
+                const match = line.match(/(\d+\.\d+\.\d+\.\d+)/);
+                if (match) {
+                  resolve(match[0]);
+                  return;
+                }
+              }
+            }
+            resolve("");
+          }, 1000);
+        });
+    } catch {
+      resolve("");
+    }
+  });
+
+  if (webrtcIP) return webrtcIP;
+
+  if (
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1"
+  ) {
+    return window.location.hostname;
+  }
+
+  return (
+    window.prompt("Enter your local IP address (e.g., 192.168.1.100):") ||
+    "localhost"
+  );
+};
 
 interface DesktopViewProps {
   onFileSelect: (file: File) => void;
@@ -15,53 +81,70 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "connected"
   >("idle");
-  const [peer, setPeer] = useState<any>(null);
-  const [connections, setConnections] = useState<Map<string, any>>(new Map());
-  const [transferStatus, setTransferStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
-  const [currentGesture, setCurrentGesture] = useState<string>("none");
-  const { gestures } = useGestureCapture();
+  const [connections, setConnections] = useState<
+    Map<string, Peer.DataConnection>
+  >(new Map());
+  const [currentGesture, setCurrentGesture] = useState<string>("");
+  const [localIP, setLocalIP] = useState<string>("localhost");
+  const [showQRModal, setShowQRModal] = useState(false);
 
-  // Initialize Peer
+  const peerRef = useRef<Peer.Peer | null>(null);
+
   useEffect(() => {
-    if (peer) return; // Already initialized
-    
+    getLocalIP().then((ip) => setLocalIP(ip));
+  }, []);
+
+  useEffect(() => {
+    if (peerRef.current) return;
+
     try {
       setConnectionStatus("connecting");
-      const newPeer = new Peer();
-      
+      const newPeer = new Peer.Peer({
+        config: {
+          iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+          ],
+        },
+      });
+      peerRef.current = newPeer;
+
       newPeer.on("open", (id) => {
-        console.log("Desktop peer ID:", id);
         setPeerId(id);
-        setPeer(newPeer);
         setConnectionStatus("idle");
       });
 
       newPeer.on("connection", (conn) => {
-        console.log("Mobile connected");
-        setConnections(prev => new Map(prev).set(conn.peer, conn));
+        setConnections((prev) => new Map(prev).set(conn.peer, conn));
         setConnectionStatus("connected");
-        
+
         conn.on("close", () => {
-          setConnections(prev => {
+          setConnections((prev) => {
             const newMap = new Map(prev);
             newMap.delete(conn.peer);
             return newMap;
           });
-          if (connections.size === 1) { // Only this connection closing
+          if (connections.size === 0) {
             setConnectionStatus("idle");
           }
         });
       });
 
-      newPeer.on("error", (err) => {
-        console.error("Peer error:", err);
+      newPeer.on("error", () => {
         setConnectionStatus("idle");
       });
+
+      return () => {
+        if (peerRef.current) {
+          peerRef.current.destroy();
+          peerRef.current = null;
+        }
+      };
     } catch (error) {
-      console.error("Failed to initialize peer:", error);
+      console.error("Peer initialization error:", error);
       setConnectionStatus("idle");
     }
-  }, [peer]);
+  }, [connections.size]);
 
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,64 +152,56 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       if (file) {
         setSelectedFile(file);
         onFileSelect(file);
-        setTransferStatus("idle");
       }
     },
     [onFileSelect],
   );
 
-  const sendFile = useCallback(async (file: File, connection: any) => {
-    try {
-      setTransferStatus("sending");
-      
-      // Send file metadata
-      connection.send({
-        type: "file-start",
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-      });
-
-      // Read file and send in chunks
-      const chunkSize = 16384; // 16KB chunks
-      const buffer = await file.arrayBuffer();
-      const totalChunks = Math.ceil(buffer.byteLength / chunkSize);
-
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * chunkSize;
-        const end = Math.min(start + chunkSize, buffer.byteLength);
-        const chunk = buffer.slice(start, end);
-        
+  const sendFile = useCallback(
+    async (file: File, connection: Peer.DataConnection) => {
+      try {
+        const fileId = Date.now().toString();
         connection.send({
-          type: "file-chunk",
-          chunkIndex: i,
-          chunk: chunk,
-        });
+          type: "file-start",
+          fileId,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        } as FileStart);
+
+        const chunkSize = 16384;
+        const buffer = await file.arrayBuffer();
+        const totalChunks = Math.ceil(buffer.byteLength / chunkSize);
+
+        for (let i = 0; i < totalChunks; i++) {
+          const start = i * chunkSize;
+          const end = Math.min(start + chunkSize, buffer.byteLength);
+          const chunk = buffer.slice(start, end);
+
+          connection.send({
+            type: "file-chunk",
+            fileId,
+            chunkIndex: i,
+            chunk: chunk,
+          } as FileChunk);
+        }
+
+        connection.send({
+          type: "file-end",
+          fileId,
+        } as FileEnd);
+      } catch (error) {
+        console.error("Failed to send file:", error);
       }
-
-      // Send file complete signal
-      connection.send({
-        type: "file-end",
-      });
-
-      setTransferStatus("success");
-      setTimeout(() => setTransferStatus("idle"), 3000);
-    } catch (error) {
-      console.error("Failed to send file:", error);
-      setTransferStatus("error");
-      setTimeout(() => setTransferStatus("idle"), 3000);
-    }
-  }, []);
+    },
+    [],
+  );
 
   const handleGestureDetected = useCallback(
-    async (gesture: string, _position: { x: number; y: number }) => {
+    async (gesture: string) => {
       setCurrentGesture(gesture);
-      
-      if (
-        gesture === "send" &&
-        selectedFile &&
-        connections.size > 0
-      ) {
+
+      if (gesture === "send" && selectedFile && connections.size > 0) {
         const firstConnection = Array.from(connections.values())[0];
         if (firstConnection) {
           await sendFile(selectedFile, firstConnection);
@@ -138,367 +213,106 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
 
   const toggleDetection = useCallback(() => {
     setIsDetecting((prev) => !prev);
-    if (!isDetecting) {
-      setTransferStatus("idle");
-    }
-  }, [isDetecting]);
+  }, []);
 
   const canSendFile = selectedFile && connections.size > 0 && isDetecting;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Gesture Share</h1>
-              <p className="text-slate-600 mt-1">Share files seamlessly with hand gestures</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                connectionStatus === "connected"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : connectionStatus === "connecting"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-slate-100 text-slate-600"
-              }`}>
-                <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
-                  connectionStatus === "connected"
-                    ? "bg-emerald-500"
-                    : connectionStatus === "connecting"
-                      ? "bg-amber-500"
-                      : "bg-slate-400"
-                }`}></span>
-                {connectionStatus === "connected"
-                  ? "Connected"
-                  : connectionStatus === "connecting"
-                    ? "Connecting..."
-                    : "Ready"}
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-900 text-white p-8">
+      {/* QR Modal */}
+      {showQRModal && peerId && connectionStatus !== "connected" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-gray-800 p-8 rounded-2xl max-w-sm w-full mx-4">
+            <button
+              onClick={() => setShowQRModal(false)}
+              className="absolute top-4 right-4 text-white hover:text-gray-300"
+            >
+              ✕
+            </button>
+            <QRDisplay
+              value={`http://${localIP}:5173/connect?peer=${peerId}`}
+              title=""
+              className=""
+            />
+            <p className="text-center mt-4 text-gray-300">Scan to connect</p>
           </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-2xl font-bold">Gesture Share</h1>
+        <div className="flex items-center gap-4">
+          <div
+            className={`w-3 h-3 rounded-full ${
+              connectionStatus === "connected"
+                ? "bg-green-500"
+                : connectionStatus === "connecting"
+                  ? "bg-yellow-500"
+                  : "bg-gray-500"
+            }`}
+          ></div>
+          <span>{connectionStatus}</span>
+          {connectionStatus !== "connected" && peerId && (
+            <button
+              onClick={() => setShowQRModal(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
+            >
+              Show QR
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Left Column - Connection & File */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* QR Code Connection */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
-                  Mobile Connection
-                </h2>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* File Selection */}
+        <div>
+          <input
+            type="file"
+            id="fileInput"
+            onChange={handleFileSelect}
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            className="hidden"
+          />
+          <label
+            htmlFor="fileInput"
+            className="block bg-gray-800 p-8 rounded-lg text-center cursor-pointer hover:bg-gray-700"
+          >
+            {selectedFile ? (
+              <div>
+                <p className="text-lg">{selectedFile.name}</p>
+                <p className="text-sm text-gray-400">
+                  {(selectedFile.size / 1024).toFixed(1)} KB
+                </p>
               </div>
-              <div className="p-6">
-                {peerId ? (
-                  <QRDisplay
-                    value={`${window.location.origin}/connect?peer=${peerId}`}
-                    title="Scan with mobile device"
-                    className="w-full"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-4"></div>
-                    <p className="text-sm text-slate-600">Generating connection code...</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            ) : (
+              <p>Click to select file</p>
+            )}
+          </label>
+          {canSendFile && (
+            <p className="mt-4 text-green-400">Ready to send with gesture</p>
+          )}
+        </div>
 
-            {/* File Selection Card */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"></div>
-                  File Selection
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="relative">
-                    <input
-                      type="file"
-                      id="fileInput"
-                      onChange={handleFileSelect}
-                      accept="image/*,.pdf,.doc,.docx,.txt"
-                      className="sr-only"
-                    />
-                    <label
-                      htmlFor="fileInput"
-                      className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-slate-300 border-dashed rounded-lg appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    >
-                      <div className="flex flex-col items-center space-y-2">
-                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <span className="text-sm text-slate-600">Drop file here or click to browse</span>
-                        <span className="text-xs text-slate-400">Images, PDFs, documents</span>
-                      </div>
-                    </label>
-                  </div>
-
-                  {selectedFile && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-emerald-900 truncate">
-                            {selectedFile.name}
-                          </p>
-                          <p className="text-xs text-emerald-600">
-                            {(selectedFile.size / 1024).toFixed(1)} KB
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedFile(null);
-                            setTransferStatus("idle");
-                          }}
-                          className="text-emerald-400 hover:text-emerald-600 transition-colors"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {transferStatus !== "idle" && (
-                    <div className={`rounded-lg p-4 border ${
-                      transferStatus === "sending"
-                        ? "bg-blue-50 border-blue-200"
-                        : transferStatus === "success"
-                          ? "bg-emerald-50 border-emerald-200"
-                          : "bg-red-50 border-red-200"
-                    }`}>
-                      <div className="flex items-center gap-3">
-                        {transferStatus === "sending" && (
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        )}
-                        {transferStatus === "success" && (
-                          <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                        {transferStatus === "error" && (
-                          <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        )}
-                        <p className={`text-sm font-medium ${
-                          transferStatus === "sending"
-                            ? "text-blue-800"
-                            : transferStatus === "success"
-                              ? "text-emerald-800"
-                              : "text-red-800"
-                        }`}>
-                          {transferStatus === "sending"
-                            ? "Sending file..."
-                            : transferStatus === "success"
-                              ? "File sent successfully!"
-                              : "Failed to send file"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+        {/* Gesture Detection */}
+        <div>
+          <div className="relative bg-gray-800 rounded-lg overflow-hidden">
+            <GestureDetector
+              onGestureDetected={handleGestureDetected}
+              isDetecting={isDetecting}
+            />
+            <button
+              onClick={toggleDetection}
+              className={`absolute top-4 right-4 px-3 py-1 rounded ${
+                isDetecting ? "bg-blue-600" : "bg-gray-600"
+              }`}
+            >
+              {isDetecting ? "ON" : "OFF"}
+            </button>
           </div>
-
-          {/* Center Column - Gesture Detection */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* Gesture Detection Card */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-200">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></div>
-                    Gesture Control
-                  </h2>
-                  <button
-                    onClick={toggleDetection}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isDetecting ? "bg-purple-600" : "bg-slate-200"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        isDetecting ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-              <div className="p-6">
-                <GestureDetector
-                  onGestureDetected={handleGestureDetected}
-                  isDetecting={isDetecting}
-                />
-                
-                <div className="mt-6">
-                  <div className="bg-slate-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-medium text-slate-700">Current Gesture</h3>
-                      <div className={`px-2 py-1 rounded text-xs font-medium ${
-                        currentGesture === "OPEN_HAND"
-                          ? "bg-blue-100 text-blue-700"
-                          : currentGesture === "FIST"
-                            ? "bg-red-100 text-red-700"
-                            : currentGesture === "send"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {currentGesture.replace("_", " ").toLowerCase()}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <p className="text-xs text-slate-600">Open hand = Ready</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <p className="text-xs text-slate-600">Fist = Grab</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                        <p className="text-xs text-slate-600">Open + movement = Send</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {canSendFile && (
-                  <div className="mt-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-emerald-900">
-                          Ready to send {selectedFile.name}
-                        </p>
-                        <p className="text-xs text-emerald-600">
-                          Make the send gesture to transfer
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Status Card */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500"></div>
-                  System Status
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600">Camera</span>
-                    <span className={`text-sm font-medium ${
-                      isDetecting ? "text-emerald-600" : "text-slate-400"
-                    }`}>
-                      {isDetecting ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600">Connection</span>
-                    <span className={`text-sm font-medium ${
-                      connectionStatus === "connected" ? "text-emerald-600" : "text-slate-400"
-                    }`}>
-                      {connectionStatus === "connected" ? "Connected" : "Waiting"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-600">File Ready</span>
-                    <span className={`text-sm font-medium ${
-                      selectedFile ? "text-emerald-600" : "text-slate-400"
-                    }`}>
-                      {selectedFile ? "Selected" : "None"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Instructions */}
-          <div className="lg:col-span-1 space-y-6">
-            
-            {/* Instructions Card */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-slate-200">
-                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500"></div>
-                  How It Works
-                </h2>
-              </div>
-              <div className="p-6">
-                <div className="space-y-4">
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-blue-600">1</span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-slate-900">Connect</h3>
-                      <p className="text-xs text-slate-600 mt-1">Scan QR code with mobile device</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-emerald-600">2</span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-slate-900">Select File</h3>
-                      <p className="text-xs text-slate-600 mt-1">Choose the file you want to share</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-purple-600">3</span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-slate-900">Enable Gestures</h3>
-                      <p className="text-xs text-slate-600 mt-1">Toggle gesture detection on</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-sm font-bold text-amber-600">4</span>
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-medium text-slate-900">Send File</h3>
-                      <p className="text-xs text-slate-600 mt-1">Make the send gesture</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <p className="mt-2 text-sm text-gray-400">
+            {currentGesture || "No gesture detected"}
+          </p>
         </div>
       </div>
     </div>

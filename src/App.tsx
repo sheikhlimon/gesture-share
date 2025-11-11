@@ -4,18 +4,17 @@ import { MobileView } from "./components/MobileView";
 
 function App() {
   const [isMobile, setIsMobile] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const handleFileSelect = useCallback((file: File) => {
-    setSelectedFile(file);
     console.log("File selected for sharing:", file.name);
   }, []);
 
   const detectDevice = useCallback(() => {
     const userAgent = navigator.userAgent.toLowerCase();
-    const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
-      userAgent
-    ) || window.innerWidth < 768;
+    const isMobileDevice =
+      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+        userAgent,
+      ) || window.innerWidth < 768;
     setIsMobile(isMobileDevice);
   }, []);
 
