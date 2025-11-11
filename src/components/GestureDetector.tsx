@@ -44,37 +44,83 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
   const startVideoStream = useCallback(async () => {
     try {
+      // Stop any existing stream
+      if (videoRef.current?.srcObject) {
+        const oldStream = videoRef.current.srcObject as MediaStream;
+        oldStream.getTracks().forEach(track => track.stop());
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480 },
+        video: { 
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user"
+        },
         audio: false,
       });
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        
+        // Wait for video metadata to load before starting detection
+        await new Promise<void>((resolve, reject) => {
+          const video = videoRef.current!;
+          
+          // Set a timeout in case video loading takes too long
+          const timeout = setTimeout(() => {
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('error', handleError);
+            reject(new Error('Video loading timeout'));
+          }, 5000);
+          
+          const handleLoadedMetadata = () => {
+            clearTimeout(timeout);
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('error', handleError);
+            
+            // Also wait for the first frame to ensure dimensions are available
+            video.play().then(() => {
+              // Give a brief moment for the first frame to render
+              setTimeout(resolve, 100);
+            }).catch(reject);
+          };
+          
+          const handleError = () => {
+            clearTimeout(timeout);
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('error', handleError);
+            reject(new Error('Video failed to load'));
+          };
+          
+          video.addEventListener('loadedmetadata', handleLoadedMetadata);
+          video.addEventListener('error', handleError);
+        });
       }
-    } catch {
-      setError("Failed to access camera");
+    } catch (err) {
+      console.error('Camera initialization error:', err);
+      setError("Failed to access camera. Please ensure camera permissions are granted.");
       setIsLoading(false);
     }
   }, []);
 
   const classifyGesture = useCallback((landmarks: handPoseDetection.Hand[]) => {
-    if (!landmarks.length) return "none";
+    if (!landmarks.length || !landmarks[0]?.landmarks) return "none";
 
     const hand = landmarks[0];
     const fingerTips = [4, 8, 12, 16, 20];
     const fingerBases = [3, 6, 10, 14, 18];
+    const landmarks21 = hand.landmarks;
 
     let extendedFingers = 0;
 
     // Thumb (special case - compare x coordinates)
-    if (hand.landmarks[fingerTips[0]].x > hand.landmarks[fingerBases[0]].x) {
+    if (landmarks21[fingerTips[0]]?.x > landmarks21[fingerBases[0]]?.x) {
       extendedFingers++;
     }
 
     // Other fingers (compare y coordinates)
     for (let i = 1; i < fingerTips.length; i++) {
-      if (hand.landmarks[fingerTips[i]].y < hand.landmarks[fingerBases[i]].y) {
+      if (landmarks21[fingerTips[i]]?.y < landmarks21[fingerBases[i]]?.y) {
         extendedFingers++;
       }
     }
@@ -86,13 +132,13 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
   const detectHandPosition = useCallback(
     (landmarks: handPoseDetection.Hand[]) => {
-      if (!landmarks.length) return { x: 0, y: 0 };
+      if (!landmarks.length || !landmarks[0]?.landmarks) return { x: 0, y: 0 };
 
       const hand = landmarks[0];
       const palmBase = hand.landmarks[0];
       return {
-        x: palmBase.x,
-        y: palmBase.y,
+        x: palmBase?.x || 0,
+        y: palmBase?.y || 0,
       };
     },
     [],
@@ -102,7 +148,24 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     if (!isDetecting || !detectorRef.current || !videoRef.current) return;
 
     try {
+      // Validate video dimensions before processing
+      if (videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+        // Video not ready yet, skip this frame with a small delay
+        setTimeout(() => {
+          if (isDetecting) requestAnimationFrame(detectGestures);
+        }, 100);
+        return;
+      }
+
       const hands = await detectorRef.current.estimateHands(videoRef.current);
+      
+      // Add extra validation for hands data
+      if (!hands || !Array.isArray(hands)) {
+        console.warn('Invalid hands data received:', hands);
+        requestAnimationFrame(detectGestures);
+        return;
+      }
+      
       const currentGesture = classifyGesture(hands);
       const position = detectHandPosition(hands);
 
@@ -137,6 +200,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       requestAnimationFrame(detectGestures);
     } catch (err) {
       console.error("Detection error:", err);
+      
+      // Add a small delay before retrying to prevent error spam
+      setTimeout(() => {
+        if (isDetecting) requestAnimationFrame(detectGestures);
+      }, 1000);
     }
   }, [isDetecting, classifyGesture, detectHandPosition, onGestureDetected]);
 

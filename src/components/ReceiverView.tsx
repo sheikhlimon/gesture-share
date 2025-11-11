@@ -92,63 +92,107 @@ export const ReceiverView: React.FC<ReceiverViewProps> = ({
   }, [connectionStatus]);
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-xl shadow-lg">
-      <h2 className="text-2xl font-bold text-center mb-6">
-        Connect to Desktop
-      </h2>
+    <div className="max-w-md mx-auto">
+      <div className="card">
+        <div className="p-6">
+          <h2 className="text-2xl font-semibold text-gray-900 text-center mb-8">
+            Connect to Desktop
+          </h2>
 
-      <div className={`p-4 rounded-lg border mb-6 ${getStatusColor()}`}>
-        <p className="text-sm font-medium">{getStatusText()}</p>
+          <div className={`p-4 rounded-lg border mb-6 ${
+            connectionStatus === "connected"
+              ? "bg-green-50 border-green-200 text-green-700"
+              : connectionStatus === "connecting"
+                ? "bg-yellow-50 border-yellow-200 text-yellow-700"
+                : connectionStatus === "error"
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : "bg-gray-50 border-gray-200 text-gray-700"
+          }`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${
+                connectionStatus === "connected"
+                  ? "bg-green-500"
+                  : connectionStatus === "connecting"
+                    ? "bg-yellow-500"
+                    : connectionStatus === "error"
+                      ? "bg-red-500"
+                      : "bg-gray-500"
+              }`}></div>
+              <p className="text-sm font-medium">
+                {connectionStatus === "connected"
+                  ? "Connected to desktop"
+                  : connectionStatus === "connecting"
+                    ? "Connecting..."
+                    : connectionStatus === "error"
+                      ? "Connection failed"
+                      : "Ready to connect"}
+              </p>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-600">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="peerId" className="label">
+                Desktop Peer ID
+              </label>
+              <input
+                id="peerId"
+                type="text"
+                value={peerId}
+                onChange={handlePeerIdChange}
+                placeholder="Enter desktop code..."
+                className="input"
+                disabled={isConnecting || connectionStatus === "connected"}
+              />
+            </div>
+
+            <button
+              onClick={handleConnect}
+              disabled={
+                isConnecting || connectionStatus === "connected" || !peerId.trim()
+              }
+              className="btn btn-primary btn-md w-full"
+            >
+              {isConnecting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Connecting...
+                </>
+              ) : connectionStatus === "connected" ? (
+                <>
+                  <div className="w-2 h-2 bg-white rounded-full mr-2"></div>
+                  Connected
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Connect
+                </>
+              )}
+            </button>
+          </div>
+
+          {connectionStatus === "connected" && (
+            <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <p className="text-sm font-medium text-green-700">Connection established</p>
+              </div>
+              <p className="text-xs text-green-600">
+                You can now receive gestures from the desktop.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-600 text-sm">{error}</p>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <div>
-          <label
-            htmlFor="peerId"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Desktop Peer ID
-          </label>
-          <input
-            id="peerId"
-            type="text"
-            value={peerId}
-            onChange={handlePeerIdChange}
-            placeholder="Enter desktop code..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            disabled={isConnecting || connectionStatus === "connected"}
-          />
-        </div>
-
-        <button
-          onClick={handleConnect}
-          disabled={
-            isConnecting || connectionStatus === "connected" || !peerId.trim()
-          }
-          className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        >
-          {isConnecting
-            ? "Connecting..."
-            : connectionStatus === "connected"
-              ? "Connected"
-              : "Connect"}
-        </button>
-      </div>
-
-      {connectionStatus === "connected" && (
-        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-green-700 text-sm">
-            ✓ Connection established. You can now receive gestures from the
-            desktop.
-          </p>
-        </div>
-      )}
     </div>
   );
 };

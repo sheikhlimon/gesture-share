@@ -11,8 +11,8 @@ interface QRDisplayProps {
 export const QRDisplay = React.memo<QRDisplayProps>(
   ({ value, size = 256, title = "Scan to connect", className = "" }) => (
     <div className={`qr-display ${className}`}>
-      <h3 className="text-lg font-semibold text-center mb-4">{title}</h3>
-      <div className="bg-white p-4 rounded-lg shadow-lg inline-block">
+      <h3 className="text-lg font-semibold text-gray-900 text-center mb-6">{title}</h3>
+      <div className="inline-block p-4 bg-white rounded-lg border shadow-sm">
         <QRCode
           value={value}
           size={size}
@@ -22,10 +22,7 @@ export const QRDisplay = React.memo<QRDisplayProps>(
           includeMargin={true}
         />
       </div>
-      <p className="text-sm text-gray-600 text-center mt-4">
-        Or enter this code:{" "}
-        <span className="font-mono bg-gray-100 px-2 py-1 rounded">{value}</span>
-      </p>
+
     </div>
   ),
 );

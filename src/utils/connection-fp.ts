@@ -1,4 +1,4 @@
-import * as Peer from "peerjs";
+import { Peer } from "peerjs";
 
 export interface ConnectionInfo {
   peerId: string;
@@ -236,11 +236,24 @@ export const listenForConnections = (
   peer: Peer.Instance,
   connections: Map<string, Peer.DataConnection>,
   callback: (connection: Peer.DataConnection) => void,
+  fileTransferHandler?: (data: any) => void,
 ): void => {
   peer.on("connection", (connection) => {
     console.log("Incoming connection from:", connection.peer);
     connections.set(connection.peer, connection);
-    setupConnectionListeners(connection, connections);
+    setupConnectionListeners(
+      connection, 
+      connections, 
+      (data) => {
+        fileTransferHandler?.(data);
+      },
+      (data) => {
+        fileTransferHandler?.(data);
+      },
+      (data) => {
+        fileTransferHandler?.(data);
+      }
+    );
     callback(connection);
   });
 };
@@ -299,11 +312,12 @@ export const createConnectionManager = () => {
     },
     listenForConnections: (
       callback: (connection: Peer.DataConnection) => void,
+      fileTransferHandler?: (data: any) => void,
     ) => {
       if (!state.peer) {
         throw new Error("Peer not initialized");
       }
-      listenForConnections(state.peer, state.connections, callback);
+      listenForConnections(state.peer, state.connections, callback, fileTransferHandler);
     },
     handleFileTransfer: (data: {
       type: string;
