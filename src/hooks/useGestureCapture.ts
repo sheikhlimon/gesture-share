@@ -1,6 +1,11 @@
 import { useState, useRef, useCallback } from 'react';
 import { Point, Gesture } from '../types/gesture';
 
+// Simple ID generator function
+const generateId = () => {
+  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
 export const useGestureCapture = () => {
   const [isCapturing, setIsCapturing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
@@ -29,7 +34,7 @@ export const useGestureCapture = () => {
     if (!isCapturing || currentPoints.length === 0) return null;
 
     const gesture: Gesture = {
-      id: `gesture_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `gesture_${generateId()}`,
       name,
       points: currentPoints,
       duration: Date.now() - startTimeRef.current,

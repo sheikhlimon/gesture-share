@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
 // Mock canvas context for gesture canvas tests
 const mockCanvasContext = {
