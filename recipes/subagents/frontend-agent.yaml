@@ -1,0 +1,41 @@
+title: "Frontend Development Agent"
+description: "UI/UX Development agent for building gesture interface components and voice command integration on existing React + TypeScript + Vite project"
+
+instructions: "Leverage existing React + TypeScript + Vite setup to create gesture capture interface components, build visual feedback system, integrate voice command capabilities, add gesture-specific TypeScript interfaces, implement accessibility features, and auto-commit after each component completion while updating progress tracking."
+
+specialization: "UI/UX Development"
+
+tasks:
+  - name: "Create gesture interface components"
+    files: ["src/components/GestureCapture.tsx", "src/components/GestureFeedback.tsx", "src/hooks/useGestureCapture.ts"]
+    lines_estimate: 250
+    
+  - name: "Add gesture TypeScript interfaces"
+    files: ["src/types/gesture.ts", "src/types/voice.ts"]
+    lines_estimate: 80
+    
+  - name: "Implement voice command integration"
+    files: ["src/hooks/useVoiceCommands.ts", "src/components/VoiceStatus.tsx"]
+    lines_estimate: 120
+    
+  - name: "Create gesture styles and animations"
+    files: ["src/styles/gesture.css", "src/styles/animations.css"]
+    lines_estimate: 100
+    
+  - name: "Add gesture utility functions"
+    files: ["src/utils/gestureHelpers.ts", "src/utils/voiceHelpers.ts"]
+    lines_estimate: 90
+
+auto_commit: true
+commit_format: "feat(frontend): {task_name} ({files_modified} files, {lines_added} lines)"
+
+tracking:
+  status_file: "../agent.md"
+  update_fields:
+    - "Frontend Agent"
+    - "Files Modified"
+    - "Lines Added"
+
+required_tools:
+  - "developer"
+  - "computercontroller"

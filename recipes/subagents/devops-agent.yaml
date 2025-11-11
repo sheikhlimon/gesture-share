@@ -1,0 +1,36 @@
+title: "DevOps & Deployment Agent"
+description: "Infrastructure & Deployment agent for setting up CI/CD pipeline, Docker containerization, and automated deployment environments"
+
+instructions: "Setup GitHub Actions CI/CD pipeline with automated testing, configure Docker containerization for consistent deployment, create multi-environment configuration (dev/staging/prod), add health monitoring and logging systems, setup automated testing integration in pipeline, auto-commit after each infrastructure component, and update progress tracking with pipeline status."
+
+specialization: "Infrastructure & Deployment"
+
+tasks:
+  - name: "Setup CI/CD pipeline"
+    files: [".github/workflows/main.yml", "Dockerfile", "docker-compose.yml"]
+    lines_estimate: 90
+    
+  - name: "Configure deployment environments"
+    files: [".env.development", ".env.staging", ".env.production", "deploy.sh"]
+    lines_estimate: 60
+    
+  - name: "Add health monitoring"
+    files: ["scripts/health-check.sh", "src/health/index.ts"]
+    lines_estimate: 80
+    
+  - name: "Setup automated testing in CI"
+    files: [".github/workflows/test.yml", "scripts/test-runner.sh"]
+    lines_estimate: 70
+
+auto_commit: true
+commit_format: "infra(devops): {task_name} ({pipelines_setup} pipelines, {environments_configured} environments)"
+
+tracking:
+  status_file: "../agent.md"
+  update_fields:
+    - "DevOps Agent"
+    - "Pipeline Status"
+
+required_tools:
+  - "developer"
+  - "computercontroller"

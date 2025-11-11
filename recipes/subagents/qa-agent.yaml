@@ -1,0 +1,37 @@
+title: "QA Testing Agent"
+description: "Quality Assurance & Testing agent for creating comprehensive test suite for gesture recognition, voice commands, and cross-device compatibility"
+
+instructions: "Setup automated testing framework with Jest and React Testing Library, create gesture recognition tests with mock gestures, add voice command testing with speech synthesis mocks, implement cross-device compatibility tests, add accessibility testing for gesture interfaces, auto-commit after each test suite completion, and update progress tracking with test counts and coverage."
+
+specialization: "Quality Assurance & Testing"
+
+tasks:
+  - name: "Setup testing framework"
+    files: ["src/__tests__/setup.ts", "jest.config.js", "src/test-utils/gestureMock.ts"]
+    lines_estimate: 80
+    
+  - name: "Create gesture recognition tests"
+    files: ["src/__tests__/gestureCapture.test.tsx", "src/__tests__/gestureValidation.test.ts"]
+    lines_estimate: 150
+    
+  - name: "Add voice command tests"
+    files: ["src/__tests__/voiceCommands.test.ts"]
+    lines_estimate: 60
+    
+  - name: "Implement cross-device compatibility tests"
+    files: ["src/__tests__/deviceCompatibility.test.ts", "src/__tests__/accessibility.test.tsx"]
+    lines_estimate: 120
+
+auto_commit: true
+commit_format: "test(qa): {task_name} ({tests_created} tests, {coverage}% coverage)"
+
+tracking:
+  status_file: "../agent.md"
+  update_fields:
+    - "QA Agent"
+    - "Tests Created"
+    - "Tests Passing"
+
+required_tools:
+  - "developer"
+  - "computercontroller"

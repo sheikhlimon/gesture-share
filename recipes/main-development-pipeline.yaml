@@ -1,0 +1,29 @@
+title: "Gesture Share Parallel Development Pipeline"
+description: "Execute all development agents simultaneously to build the gesture-sharing platform with frontend, QA, and DevOps working in parallel"
+
+instructions: "Verify existing React + TypeScript + Vite project, then launch Frontend, QA, and DevOps agents in parallel to build gesture-sharing platform. Track progress in agent.md and auto-commit after each agent completes tasks."
+
+setup:
+  - "Verify existing React + TypeScript + Vite project"
+  - "Confirm git repository is initialized on main branch"
+
+parallel_agents:
+  - recipe: "subagents/frontend-agent.yaml"
+    name: "Frontend Development"
+    auto_commit: true
+    commit_message: "feat(frontend): {task_description}"
+    
+  - recipe: "subagents/qa-agent.yaml" 
+    name: "Quality Assurance"
+    auto_commit: true
+    commit_message: "test(qa): {task_description}"
+    
+  - recipe: "subagents/devops-agent.yaml"
+    name: "DevOps & Deployment"
+    auto_commit: true
+    commit_message: "infra(devops): {task_description}"
+
+configuration:
+  feature_queue: "recipes/tasks/feature-queue.json"
+  status_file: "agent.md"
+  update_frequency: "after_each_task"
