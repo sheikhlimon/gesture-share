@@ -4,6 +4,7 @@ interface MobileConnectionProps {
   onConnection: (peerId: string) => void;
   onDisconnect: () => void;
   isConnected: boolean;
+  targetPeerId?: string;
 }
 
 declare global {
@@ -17,7 +18,8 @@ declare global {
 const MobileRealtimeConnection: React.FC<MobileConnectionProps> = ({ 
   onConnection, 
   onDisconnect, 
-  isConnected 
+  isConnected,
+  targetPeerId
 }) => {
   const [isReceiving, setIsReceiving] = useState(false);
   const [isInitiating, setIsInitiating] = useState(false);
@@ -176,6 +178,15 @@ const MobileRealtimeConnection: React.FC<MobileConnectionProps> = ({
     }
     setConnectionCandidates(candidates);
   }, []);
+
+  // Auto-connect when targetPeerId is provided
+  useEffect(() => {
+    if (targetPeerId && !isConnected) {
+      setIsReceiving(true);
+      setStatus('Connecting to desktop...');
+      processConnectionCode(targetPeerId);
+    }
+  }, [targetPeerId, isConnected]);
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">

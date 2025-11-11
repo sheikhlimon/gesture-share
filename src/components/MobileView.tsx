@@ -19,6 +19,19 @@ export const MobileView: React.FC<MobileViewProps> = ({
   const [connectionManager, setConnectionManager] = useState<ReturnType<
     typeof createConnectionManager
   > | null>(null);
+  
+  // Check URL for peer parameter on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const peerParam = urlParams.get('peer');
+    if (peerParam) {
+      setTargetPeerId(peerParam);
+      // Auto-connect when peer ID is in URL
+      setTimeout(() => {
+        handleMobileConnection(peerParam);
+      }, 1000);
+    }
+  }, []);
 
   const handleMobileConnection = (peerId: string) => {
     setConnectionStatus("connected");
@@ -43,6 +56,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
             onConnection={handleMobileConnection}
             onDisconnect={handleMobileDisconnect}
             isConnected={connectionStatus === "connected"}
+            targetPeerId={targetPeerId}
           />
 
           {/* File Receiving Status */}
