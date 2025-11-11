@@ -156,6 +156,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   useEffect(() => {
     return () => {
       // Cleanup video stream
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       const videoElement = videoRef.current;
       if (videoElement?.srcObject) {
         const stream = videoElement.srcObject as MediaStream;

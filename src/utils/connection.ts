@@ -1,4 +1,4 @@
-import Peer from "peerjs";
+import * as Peer from "peerjs";
 
 export interface ConnectionInfo {
   peerId: string;
