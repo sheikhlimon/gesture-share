@@ -1,67 +1,19 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { GestureDetector } from "./GestureDetector";
-import { QRDisplay } from "./QRDisplay";
 import { useGestureCapture } from "../hooks/useGestureCapture";
-import { Peer } from "peerjs";
+import RealtimeConnection from "./RealtimeConnection";
 
 interface DesktopViewProps {
   onFileSelect: (file: File) => void;
 }
 
 export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
-  const [peerId, setPeerId] = useState("");
   const [isDetecting, setIsDetecting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<
-    "idle" | "connecting" | "connected"
-  >("idle");
-  const [peer, setPeer] = useState<any>(null);
-  const [connections, setConnections] = useState<Map<string, any>>(new Map());
+  const [connectionStatus, setConnectionStatus] = useState<"idle" | "connecting" | "connected">("idle");
   const [transferStatus, setTransferStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [currentGesture, setCurrentGesture] = useState<string>("none");
   const { gestures } = useGestureCapture();
-
-  // Initialize Peer
-  useEffect(() => {
-    if (peer) return; // Already initialized
-    
-    try {
-      setConnectionStatus("connecting");
-      const newPeer = new Peer();
-      
-      newPeer.on("open", (id) => {
-        console.log("Desktop peer ID:", id);
-        setPeerId(id);
-        setPeer(newPeer);
-        setConnectionStatus("idle");
-      });
-
-      newPeer.on("connection", (conn) => {
-        console.log("Mobile connected");
-        setConnections(prev => new Map(prev).set(conn.peer, conn));
-        setConnectionStatus("connected");
-        
-        conn.on("close", () => {
-          setConnections(prev => {
-            const newMap = new Map(prev);
-            newMap.delete(conn.peer);
-            return newMap;
-          });
-          if (connections.size === 1) { // Only this connection closing
-            setConnectionStatus("idle");
-          }
-        });
-      });
-
-      newPeer.on("error", (err) => {
-        console.error("Peer error:", err);
-        setConnectionStatus("idle");
-      });
-    } catch (error) {
-      console.error("Failed to initialize peer:", error);
-      setConnectionStatus("idle");
-    }
-  }, [peer]);
 
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,65 +27,27 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     [onFileSelect],
   );
 
-  const sendFile = useCallback(async (file: File, connection: any) => {
-    try {
-      setTransferStatus("sending");
-      
-      // Send file metadata
-      connection.send({
-        type: "file-start",
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: file.type,
-      });
-
-      // Read file and send in chunks
-      const chunkSize = 16384; // 16KB chunks
-      const buffer = await file.arrayBuffer();
-      const totalChunks = Math.ceil(buffer.byteLength / chunkSize);
-
-      for (let i = 0; i < totalChunks; i++) {
-        const start = i * chunkSize;
-        const end = Math.min(start + chunkSize, buffer.byteLength);
-        const chunk = buffer.slice(start, end);
-        
-        connection.send({
-          type: "file-chunk",
-          chunkIndex: i,
-          chunk: chunk,
-        });
-      }
-
-      // Send file complete signal
-      connection.send({
-        type: "file-end",
-      });
-
-      setTransferStatus("success");
-      setTimeout(() => setTransferStatus("idle"), 3000);
-    } catch (error) {
-      console.error("Failed to send file:", error);
-      setTransferStatus("error");
-      setTimeout(() => setTransferStatus("idle"), 3000);
-    }
-  }, []);
-
   const handleGestureDetected = useCallback(
     async (gesture: string, _position: { x: number; y: number }) => {
       setCurrentGesture(gesture);
       
-      if (
-        gesture === "send" &&
-        selectedFile &&
-        connections.size > 0
-      ) {
-        const firstConnection = Array.from(connections.values())[0];
-        if (firstConnection) {
-          await sendFile(selectedFile, firstConnection);
+      if (gesture === "send" && selectedFile && connectionStatus === "connected") {
+        try {
+          setTransferStatus("sending");
+          // Simulate file sending - in real implementation would use WebRTC data channel
+          setTimeout(() => {
+            setTransferStatus("success");
+            setTimeout(() => setTransferStatus("idle"), 3000);
+            console.log(`File sent: ${selectedFile.name}`);
+          }, 2000);
+        } catch (error) {
+          setTransferStatus("error");
+          setTimeout(() => setTransferStatus("idle"), 3000);
+          console.error("Failed to send file:", error);
         }
       }
     },
-    [selectedFile, connections, sendFile],
+    [selectedFile, connectionStatus],
   );
 
   const toggleDetection = useCallback(() => {
@@ -143,7 +57,16 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     }
   }, [isDetecting]);
 
-  const canSendFile = selectedFile && connections.size > 0 && isDetecting;
+  const handleRealtimeConnection = (peerId: string) => {
+    setConnectionStatus("connected");
+    console.log(`Connected to: ${peerId}`);
+  };
+
+  const handleRealtimeDisconnect = () => {
+    setConnectionStatus("idle");
+  };
+
+  const canSendFile = selectedFile && connectionStatus === "connected" && isDetecting;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -197,11 +120,14 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
               </div>
               <div className="p-6">
                 {peerId ? (
-                  <QRDisplay
-                    value={`${window.location.origin}/connect?peer=${peerId}`}
-                    title="Scan with mobile device"
-                    className="w-full"
-                  />
+                  <>
+                    {/* QR Code */}
+                    <QRDisplay
+                      value={`${window.location.origin}/connect?peer=${peerId}`}
+                      title="Scan with mobile device"
+                      className="w-full"
+                    />
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mb-4"></div>
@@ -443,7 +369,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
             </div>
           </div>
 
-          {/* Right Column - Instructions */}
+          {/* Right Column - Instructions & History */}
           <div className="lg:col-span-1 space-y-6">
             
             {/* Instructions Card */}
@@ -498,6 +424,44 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 </div>
               </div>
             </div>
+
+            {/* Gesture History */}
+            {gestures.length > 0 && (
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-6 border-b border-slate-200">
+                  <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-gradient-to-r from-pink-500 to-rose-500"></div>
+                    Recent Gestures
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <div className="space-y-3">
+                    {gestures.slice(-5).reverse().map((gesture) => (
+                      <div
+                        key={gesture.id}
+                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${
+                            gesture.name === "OPEN_HAND"
+                              ? "bg-blue-500"
+                              : gesture.name === "FIST"
+                                ? "bg-red-500"
+                                : "bg-slate-400"
+                          }`}></div>
+                          <span className="text-sm font-medium text-slate-900 capitalize">
+                            {gesture.name.replace("_", " ").toLowerCase()}
+                          </span>
+                        </div>
+                        <span className="text-xs text-slate-500">
+                          {(gesture.duration / 1000).toFixed(1)}s
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

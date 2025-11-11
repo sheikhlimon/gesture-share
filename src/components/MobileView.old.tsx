@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Peer } from "peerjs";
 
 interface MobileViewProps {
   onConnectionEstablished?: () => void;
@@ -10,90 +9,101 @@ export const MobileView: React.FC<MobileViewProps> = ({
   onConnectionEstablished,
   onFileReceived,
 }) => {
+  const [peerId, setPeerId] = useState("");
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "connected"
   >("idle");
-  const [desktopPeerId, setDesktopPeerId] = useState("");
-  const [peer, setPeer] = useState<any>(null);
-  const [connection, setConnection] = useState<any>(null);
+  const [targetPeerId, setTargetPeerId] = useState("");
   const [fileReceivingStatus, setFileReceivingStatus] = useState<string>("");
-  const [fileChunks, setFileChunks] = useState<Map<string, { chunks: ArrayBuffer[], info: any }>>(new Map());
   
   // Check URL for peer parameter on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const peerParam = urlParams.get('peer');
     if (peerParam) {
-      setDesktopPeerId(peerParam);
+      setTargetPeerId(peerParam);
+      // Create a simple peer connection to desktop
       connectToDesktop(peerParam);
     }
   }, []);
 
+  const [fileChunks, setFileChunks] = useState<Map<string, {chunks: ArrayBuffer[], info: any}>>(new Map());
+  
   const connectToDesktop = async (desktopPeerId: string) => {
     try {
       setConnectionStatus("connecting");
+      setPeerId(`mobile-${Math.random().toString(36).substr(2, 9)}`);
+      
+      // Create a simple peer without initializing a full connection manager
+      // We'll just connect directly to the desktop peer
+      const { Peer } = await import("peerjs");
       const mobilePeer = new Peer();
       
       mobilePeer.on('open', () => {
-        console.log('Mobile peer opened');
-        setPeer(mobilePeer);
-        
+        console.log('Mobile peer opened, connecting to desktop:', desktopPeerId);
         const conn = mobilePeer.connect(desktopPeerId);
         
         conn.on('open', () => {
           console.log('Connected to desktop!');
-          setConnection(conn);
           setConnectionStatus("connected");
           onConnectionEstablished?.();
-        });
-        
-        conn.on('data', (data) => {
-          if (data.type === "file-start") {
-            setFileReceivingStatus(`Receiving: ${data.fileName}`);
-            onFileReceived?.(data.fileName || "Unknown", data.fileSize || 0);
+          
+          // Listen for file data
+          conn.on('data', (data) => {
+            console.log('Received data:', data);
             
-            setFileChunks(prev => new Map(prev).set(data.fileId || "default", {
-              chunks: [],
-              info: data
-            }));
-          } else if (data.type === "file-chunk") {
-            setFileChunks(prev => {
-              const newMap = new Map(prev);
-              const fileData = newMap.get(data.fileId || "default");
-              if (fileData) {
-                fileData.chunks[data.chunkIndex] = data.chunk;
-                newMap.set(data.fileId || "default", fileData);
-              }
-              return newMap;
-            });
-          } else if (data.type === "file-end") {
-            const fileData = fileChunks.get(data.fileId || "default");
-            if (fileData && fileData.chunks.length > 0) {
-              setFileReceivingStatus(`Processing: ${fileData.info.fileName}`);
+            if (data.type === "file-start") {
+              setFileReceivingStatus(`Receiving: ${data.fileName}`);
+              onFileReceived?.(data.fileName || "Unknown", data.fileSize || 0);
               
-              const blob = new Blob(fileData.chunks, { type: fileData.info.fileType });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = fileData.info.fileName;
-              a.click();
-              URL.revokeObjectURL(url);
-              
-              setFileReceivingStatus(`Downloaded: ${fileData.info.fileName}`);
-              
+              // Initialize file chunks storage
               setFileChunks(prev => {
                 const newMap = new Map(prev);
-                newMap.delete(data.fileId || "default");
+                newMap.set(data.fileId, {
+                  chunks: [],
+                  info: data
+                });
                 return newMap;
               });
+            } else if (data.type === "file-chunk") {
+              // Store chunk
+              setFileChunks(prev => {
+                const newMap = new Map(prev);
+                const fileData = newMap.get(data.fileId);
+                if (fileData) {
+                  fileData.chunks[data.chunkIndex] = data.chunk;
+                  newMap.set(data.fileId, fileData);
+                }
+                return newMap;
+              });
+            } else if (data.type === "file-end") {
+              // Assemble file from chunks
+              const fileData = fileChunks.get(data.fileId);
+              if (fileData && fileData.chunks.length > 0) {
+                setFileReceivingStatus(`Processing: ${fileData.info.fileName}`);
+                
+                // Combine chunks
+                const blob = new Blob(fileData.chunks, { type: fileData.info.fileType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileData.info.fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                setFileReceivingStatus(`Downloaded: ${fileData.info.fileName}`);
+                
+                // Clean up
+                setFileChunks(prev => {
+                  const newMap = new Map(prev);
+                  newMap.delete(data.fileId);
+                  return newMap;
+                });
+              }
             }
-          }
-        });
-        
-        conn.on('close', () => {
-          console.log('Desktop disconnected');
-          setConnection(null);
-          setConnectionStatus("idle");
+          });
         });
         
         conn.on('error', (err) => {
@@ -111,6 +121,13 @@ export const MobileView: React.FC<MobileViewProps> = ({
       console.error("Failed to connect:", error);
       setConnectionStatus("idle");
     }
+  };
+  
+
+
+  const handleMobileDisconnect = () => {
+    setConnectionStatus("idle");
+    setTargetPeerId("");
   };
 
   return (
@@ -149,25 +166,18 @@ export const MobileView: React.FC<MobileViewProps> = ({
                   ? "Connected" 
                   : connectionStatus === "connecting"
                     ? "Connecting..."
-                    : desktopPeerId
-                      ? "Waiting to connect"
-                      : "Ready to Connect"
+                    : "Ready to Connect"
                 }
               </h3>
               <p className="text-gray-600 mb-1">
-                {desktopPeerId 
-                  ? `Desktop ID: ${desktopPeerId.substring(0, 8)}...`
+                {targetPeerId 
+                  ? `Connecting to: ${targetPeerId.substring(0, 8)}...`
                   : "Scan QR code from desktop"
                 }
               </p>
-              {desktopPeerId && (
-                <p className="text-sm text-gray-500">
-                  {connectionStatus === "connected"
-                    ? "Ready to receive files"
-                    : "Establishing connection..."
-                  }
-                </p>
-              )}
+              <p className="text-sm text-gray-500">
+                Your ID: {peerId.substring(0, 8)}...
+              </p>
             </div>
 
             {/* File Receiving Status */}
