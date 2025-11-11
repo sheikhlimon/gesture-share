@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Point } from '../types/gesture';
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { Point } from "../types/gesture";
 
 interface GestureCanvasProps {
   isCapturing: boolean;
@@ -16,7 +16,7 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
   onPointAdd,
   onStartCapture,
   onEndCapture,
-  className = ''
+  className = "",
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -25,7 +25,7 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     // Clear canvas
@@ -33,10 +33,10 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
 
     // Draw gesture points
     if (points.length > 0) {
-      ctx.strokeStyle = isCapturing ? '#3b82f6' : '#10b981';
+      ctx.strokeStyle = isCapturing ? "#3b82f6" : "#10b981";
       ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
 
       ctx.beginPath();
       points.forEach((point, index) => {
@@ -49,8 +49,8 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
       ctx.stroke();
 
       // Draw points
-      ctx.fillStyle = isCapturing ? '#3b82f6' : '#10b981';
-      points.forEach(point => {
+      ctx.fillStyle = isCapturing ? "#3b82f6" : "#10b981";
+      points.forEach((point) => {
         ctx.beginPath();
         ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
         ctx.fill();
@@ -58,34 +58,40 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
     }
   }, [points, isCapturing]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isCapturing) {
-      onStartCapture();
-    }
-    
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isCapturing) {
+        onStartCapture();
+      }
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    setIsDrawing(true);
-    onPointAdd(x, y);
-  }, [isCapturing, onStartCapture, onPointAdd]);
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !isCapturing) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+      setIsDrawing(true);
+      onPointAdd(x, y);
+    },
+    [isCapturing, onStartCapture, onPointAdd],
+  );
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    onPointAdd(x, y);
-  }, [isDrawing, isCapturing, onPointAdd]);
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDrawing || !isCapturing) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      onPointAdd(x, y);
+    },
+    [isDrawing, isCapturing, onPointAdd],
+  );
 
   const handleMouseUp = useCallback(() => {
     if (isDrawing) {
@@ -106,48 +112,57 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
   }, [isDrawing, isCapturing, onEndCapture]);
 
   // Handle touch events for mobile
-  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!isCapturing) {
-      onStartCapture();
-    }
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
-    setIsDrawing(true);
-    onPointAdd(x, y);
-  }, [isCapturing, onStartCapture, onPointAdd]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (!isDrawing || !isCapturing) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    
-    onPointAdd(x, y);
-  }, [isDrawing, isCapturing, onPointAdd]);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    if (isDrawing) {
-      setIsDrawing(false);
-      if (isCapturing) {
-        onEndCapture();
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      if (!isCapturing) {
+        onStartCapture();
       }
-    }
-  }, [isDrawing, isCapturing, onEndCapture]);
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      setIsDrawing(true);
+      onPointAdd(x, y);
+    },
+    [isCapturing, onStartCapture, onPointAdd],
+  );
+
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      if (!isDrawing || !isCapturing) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+
+      onPointAdd(x, y);
+    },
+    [isDrawing, isCapturing, onPointAdd],
+  );
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      if (isDrawing) {
+        setIsDrawing(false);
+        if (isCapturing) {
+          onEndCapture();
+        }
+      }
+    },
+    [isDrawing, isCapturing, onEndCapture],
+  );
 
   return (
     <div className={`gesture-canvas-container ${className}`}>
@@ -156,9 +171,9 @@ export const GestureCanvas: React.FC<GestureCanvasProps> = ({
         width={400}
         height={300}
         className={`border-2 rounded-lg cursor-crosshair ${
-          isCapturing 
-            ? 'border-blue-500 bg-blue-50' 
-            : 'border-gray-300 bg-white'
+          isCapturing
+            ? "border-blue-500 bg-blue-50"
+            : "border-gray-300 bg-white"
         }`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

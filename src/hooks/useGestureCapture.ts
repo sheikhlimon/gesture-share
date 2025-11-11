@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from 'react';
-import { Point, Gesture } from '../types/gesture';
+import { useState, useRef, useCallback } from "react";
+import type { Point, Gesture } from "../types/gesture";
 
 // Simple ID generator function
 const generateId = () => {
@@ -18,43 +18,49 @@ export const useGestureCapture = () => {
     startTimeRef.current = Date.now();
   }, []);
 
-  const addPoint = useCallback((x: number, y: number) => {
-    if (!isCapturing) return;
+  const addPoint = useCallback(
+    (x: number, y: number) => {
+      if (!isCapturing) return;
 
-    const point: Point = {
-      x,
-      y,
-      timestamp: Date.now() - startTimeRef.current
-    };
+      const point: Point = {
+        x,
+        y,
+        timestamp: Date.now() - startTimeRef.current,
+      };
 
-    setCurrentPoints(prev => [...prev, point]);
-  }, [isCapturing]);
+      setCurrentPoints((prev) => [...prev, point]);
+    },
+    [isCapturing],
+  );
 
-  const endCapture = useCallback((name: string, userId: string, tags: string[] = []) => {
-    if (!isCapturing || currentPoints.length === 0) return null;
+  const endCapture = useCallback(
+    (name: string, userId: string, tags: string[] = []) => {
+      if (!isCapturing || currentPoints.length === 0) return null;
 
-    const gesture: Gesture = {
-      id: `gesture_${generateId()}`,
-      name,
-      points: currentPoints,
-      duration: Date.now() - startTimeRef.current,
-      userId,
-      createdAt: Date.now(),
-      tags
-    };
+      const gesture: Gesture = {
+        id: `gesture_${generateId()}`,
+        name,
+        points: currentPoints,
+        duration: Date.now() - startTimeRef.current,
+        userId,
+        createdAt: Date.now(),
+        tags,
+      };
 
-    setGestures(prev => [...prev, gesture]);
-    setIsCapturing(false);
-    setCurrentPoints([]);
-    return gesture;
-  }, [isCapturing, currentPoints]);
+      setGestures((prev) => [...prev, gesture]);
+      setIsCapturing(false);
+      setCurrentPoints([]);
+      return gesture;
+    },
+    [isCapturing, currentPoints],
+  );
 
   const clearGestures = useCallback(() => {
     setGestures([]);
   }, []);
 
   const deleteGesture = useCallback((gestureId: string) => {
-    setGestures(prev => prev.filter(g => g.id !== gestureId));
+    setGestures((prev) => prev.filter((g) => g.id !== gestureId));
   }, []);
 
   return {
@@ -65,6 +71,6 @@ export const useGestureCapture = () => {
     addPoint,
     endCapture,
     clearGestures,
-    deleteGesture
+    deleteGesture,
   };
 };
