@@ -21,165 +21,129 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const [currentGesture, setCurrentGesture] = useState<string>("none");
   const previousGestureRef = useRef<string>("none");
   const grabStartRef = useRef<{ x: number; y: number } | null>(null);
-  const lastProcessTimeRef = useRef<number>(0);
-  const isVisibleRef = useRef<boolean>(true);
 
   useEffect(() => {
-    if (!isDetecting || handsRef.current) return;
-
-    console.log("Initializing MediaPipe Hands...");
-
-    // Suppress MediaPipe debug logs
-    (window as { WASM_LOG_LEVEL?: number }).WASM_LOG_LEVEL = 0;
-
-    handsRef.current = new Hands({
-      locateFile: (file) => {
-        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-      },
-    });
-
-    handsRef.current.setOptions({
-      maxNumHands: 1,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-
-    handsRef.current.onResults((results: Results) => {
-      if (!results?.multiHandLandmarks?.length) {
-        // Only call onGestureDetected for "none" when transitioning from another gesture
-        if (previousGestureRef.current !== "none") {
-          setCurrentGesture("none");
-          previousGestureRef.current = "none";
-          onGestureDetected?.("none", { x: 0, y: 0 });
-        }
-        return;
-      }
-
-      const landmarks = results.multiHandLandmarks[0];
-      const gesture = classifyGesture(landmarks);
-      const position = { x: landmarks[0].x, y: landmarks[0].y };
-
-      // Only call onGestureDetected when gesture actually changes
-      if (gesture !== previousGestureRef.current) {
-        setCurrentGesture(gesture);
-        onGestureDetected?.(gesture, position);
-      }
-
-      // Send gesture detection (open -> fist -> open with movement)
-      if (previousGestureRef.current === "OPEN_HAND" && gesture === "FIST") {
-        grabStartRef.current = position;
-      }
-
-      if (
-        previousGestureRef.current === "FIST" &&
-        gesture === "OPEN_HAND" &&
-        grabStartRef.current
-      ) {
-        const distance = Math.sqrt(
-          Math.pow(position.x - grabStartRef.current.x, 2) +
-            Math.pow(position.y - grabStartRef.current.y, 2),
-        );
-
-        if (distance > 0.05) {
-          onGestureDetected?.("send", position);
-          grabStartRef.current = null;
-        }
-      }
-
-      previousGestureRef.current = gesture;
-    });
-
-    console.log("MediaPipe Hands initialized successfully");
-    setIsLoading(false);
-
-    // Setup video after MediaPipe is ready
-    if (!videoRef.current) return;
-
-    const setupVideo = async () => {
-      try {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-        }
-
-        console.log("Requesting camera access...");
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-          audio: false,
-        });
-
-        console.log(
-          "Camera stream obtained, tracks:",
-          stream.getTracks().length,
-        );
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-
-          videoRef.current.onloadedmetadata = async () => {
-            console.log(
-              "Video metadata loaded, dimensions:",
-              videoRef.current?.videoWidth,
-              "x",
-              videoRef.current?.videoHeight,
-            );
-            await videoRef.current?.play();
-            console.log(
-              "Video play attempted, paused:",
-              videoRef.current?.paused,
-            );
-
-            const processFrame = async () => {
-              // Rate limit to ~10 FPS to save resources
-              const now = Date.now();
-              if (now - lastProcessTimeRef.current < 100) {
-                requestAnimationFrame(processFrame);
-                return;
-              }
-              lastProcessTimeRef.current = now;
-
-              // Only process if tab is visible
-              if (!isVisibleRef.current) {
-                requestAnimationFrame(processFrame);
-                return;
-              }
-
-              if (
-                handsRef.current &&
-                videoRef.current &&
-                !videoRef.current.paused
-              ) {
-                await handsRef.current.send({ image: videoRef.current });
-              }
-              requestAnimationFrame(processFrame);
-            };
-
-            processFrame();
-          };
-        }
-      } catch (err) {
-        console.error("Camera error:", err);
-        setError("Failed to access camera");
-      }
-    };
-
-    setupVideo();
-
-    // Handle visibility change
-    const handleVisibilityChange = () => {
-      isVisibleRef.current = !document.hidden;
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    if (!isDetecting) {
+      // Cleanup when detection is disabled
       if (handsRef.current) {
         handsRef.current.close();
         handsRef.current = null;
       }
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      return;
+    }
+
+    // Only initialize if not already initialized
+    if (handsRef.current) return;
+
+    const initializeDetection = async () => {
+      try {
+        // Get camera stream first
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
+          audio: false,
+        });
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
+
+        // Initialize MediaPipe Hands
+        handsRef.current = new Hands({
+          locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+          },
+        });
+
+        handsRef.current.setOptions({
+          maxNumHands: 1,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+
+        handsRef.current.onResults((results: Results) => {
+          if (!results?.multiHandLandmarks?.length) {
+            if (previousGestureRef.current !== "none") {
+              setCurrentGesture("none");
+              previousGestureRef.current = "none";
+              onGestureDetected?.("none", { x: 0, y: 0 });
+            }
+            return;
+          }
+
+          const landmarks = results.multiHandLandmarks[0];
+          const gesture = classifyGesture(landmarks);
+          const position = { x: landmarks[0].x, y: landmarks[0].y };
+
+          if (gesture !== previousGestureRef.current) {
+            setCurrentGesture(gesture);
+            onGestureDetected?.(gesture, position);
+          }
+
+          // Handle grab and send gesture
+          if (
+            previousGestureRef.current === "OPEN_HAND" &&
+            gesture === "FIST"
+          ) {
+            grabStartRef.current = position;
+          }
+
+          if (
+            previousGestureRef.current === "FIST" &&
+            gesture === "OPEN_HAND" &&
+            grabStartRef.current
+          ) {
+            const distance = Math.sqrt(
+              Math.pow(position.x - grabStartRef.current.x, 2) +
+                Math.pow(position.y - grabStartRef.current.y, 2),
+            );
+
+            if (distance > 0.05) {
+              onGestureDetected?.("send", position);
+              grabStartRef.current = null;
+            }
+          }
+
+          previousGestureRef.current = gesture;
+        });
+
+        // Start processing frames
+        const processFrame = async () => {
+          if (
+            handsRef.current &&
+            videoRef.current &&
+            !videoRef.current.paused
+          ) {
+            await handsRef.current.send({ image: videoRef.current });
+          }
+          requestAnimationFrame(processFrame);
+        };
+
+        processFrame();
+        setIsLoading(false);
+      } catch (err) {
+        console.error("Detection initialization error:", err);
+        setError("Failed to initialize camera or hand detection");
+        setIsLoading(false);
+      }
+    };
+
+    initializeDetection();
+
+    return () => {
+      if (handsRef.current) {
+        handsRef.current.close();
+        handsRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
   }, [isDetecting, onGestureDetected]);
