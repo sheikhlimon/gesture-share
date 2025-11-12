@@ -47,9 +47,12 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
     handsRef.current.onResults((results: Results) => {
       if (!results?.multiHandLandmarks?.length) {
-        setCurrentGesture("none");
-        previousGestureRef.current = "none";
-        onGestureDetected?.("none", { x: 0, y: 0 });
+        // Only call onGestureDetected for "none" when transitioning from another gesture
+        if (previousGestureRef.current !== "none") {
+          setCurrentGesture("none");
+          previousGestureRef.current = "none";
+          onGestureDetected?.("none", { x: 0, y: 0 });
+        }
         return;
       }
 
@@ -57,8 +60,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       const gesture = classifyGesture(landmarks);
       const position = { x: landmarks[0].x, y: landmarks[0].y };
 
-      setCurrentGesture(gesture);
-      onGestureDetected?.(gesture, position);
+      // Only call onGestureDetected when gesture actually changes
+      if (gesture !== previousGestureRef.current) {
+        setCurrentGesture(gesture);
+        onGestureDetected?.(gesture, position);
+      }
 
       // Send gesture detection (open -> fist -> open with movement)
       if (previousGestureRef.current === "OPEN_HAND" && gesture === "FIST") {
@@ -87,10 +93,93 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     console.log("MediaPipe Hands initialized successfully");
     setIsLoading(false);
 
+    // Setup video after MediaPipe is ready
+    if (!videoRef.current) return;
+
+    const setupVideo = async () => {
+      try {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        }
+
+        console.log("Requesting camera access...");
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
+          audio: false,
+        });
+
+        console.log(
+          "Camera stream obtained, tracks:",
+          stream.getTracks().length,
+        );
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+
+          videoRef.current.onloadedmetadata = async () => {
+            console.log(
+              "Video metadata loaded, dimensions:",
+              videoRef.current?.videoWidth,
+              "x",
+              videoRef.current?.videoHeight,
+            );
+            await videoRef.current?.play();
+            console.log(
+              "Video play attempted, paused:",
+              videoRef.current?.paused,
+            );
+
+            const processFrame = async () => {
+              // Rate limit to ~10 FPS to save resources
+              const now = Date.now();
+              if (now - lastProcessTimeRef.current < 100) {
+                requestAnimationFrame(processFrame);
+                return;
+              }
+              lastProcessTimeRef.current = now;
+
+              // Only process if tab is visible
+              if (!isVisibleRef.current) {
+                requestAnimationFrame(processFrame);
+                return;
+              }
+
+              if (
+                handsRef.current &&
+                videoRef.current &&
+                !videoRef.current.paused
+              ) {
+                await handsRef.current.send({ image: videoRef.current });
+              }
+              requestAnimationFrame(processFrame);
+            };
+
+            processFrame();
+          };
+        }
+      } catch (err) {
+        console.error("Camera error:", err);
+        setError("Failed to access camera");
+      }
+    };
+
+    setupVideo();
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden;
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       if (handsRef.current) {
         handsRef.current.close();
         handsRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, [isDetecting, onGestureDetected]);
@@ -150,79 +239,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
     return "PARTIAL";
   };
-
-  useEffect(() => {
-    if (!isDetecting || !videoRef.current || !handsRef.current) return;
-
-    const setupVideo = async () => {
-      try {
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-          audio: false,
-        });
-
-        streamRef.current = stream;
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-
-          videoRef.current.onloadedmetadata = async () => {
-            await videoRef.current?.play();
-            console.log("Video started");
-
-            const processFrame = async () => {
-              // Rate limit to ~10 FPS to save resources
-              const now = Date.now();
-              if (now - lastProcessTimeRef.current < 100) {
-                requestAnimationFrame(processFrame);
-                return;
-              }
-              lastProcessTimeRef.current = now;
-
-              // Only process if tab is visible
-              if (!isVisibleRef.current) {
-                requestAnimationFrame(processFrame);
-                return;
-              }
-
-              if (
-                handsRef.current &&
-                videoRef.current &&
-                !videoRef.current.paused
-              ) {
-                await handsRef.current.send({ image: videoRef.current });
-              }
-              requestAnimationFrame(processFrame);
-            };
-
-            processFrame();
-          };
-        }
-      } catch (err) {
-        console.error("Camera error:", err);
-        setError("Failed to access camera");
-      }
-    };
-
-    setupVideo();
-
-    // Handle visibility change
-    const handleVisibilityChange = () => {
-      isVisibleRef.current = !document.hidden;
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [isDetecting]);
 
   if (error) {
     return (

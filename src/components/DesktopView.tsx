@@ -191,11 +191,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   );
 
   const handleGestureDetected = useCallback(
-    async (gesture: string, position: { x: number; y: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async (gesture: string, _position: { x: number; y: number }) => {
       setCurrentGesture(gesture);
-
-      // Debug logging - position parameter needed for interface compatibility
-      console.log("Gesture detected in DesktopView:", gesture, position);
 
       switch (gesture) {
         case "PEACE":
@@ -239,6 +237,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       connections,
       sendFile,
       connectionStatus,
+      onFileSelect,
       peerId,
       showFileSelector,
       availableFiles,
