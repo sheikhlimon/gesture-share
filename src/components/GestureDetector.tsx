@@ -1,17 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import * as handPoseDetection from "@tensorflow-models/hand-pose-detection";
-import "@tensorflow/tfjs-backend-webgl";
-
-interface KeyPoint {
-  x: number;
-  y: number;
-  z?: number;
-}
-
-interface DetectedHand {
-  keypoints: KeyPoint[];
-  score?: number;
-}
+import { useEffect, useRef, useState } from "react";
+import { Hands, type Results } from "@mediapipe/hands";
 
 interface GestureDetectorProps {
   onGestureDetected: (
@@ -26,176 +14,60 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   isDetecting,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const detectorRef = useRef<handPoseDetection.HandDetector | null>(null);
+  const handsRef = useRef<Hands | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentGesture, setCurrentGesture] = useState<string>("none");
   const previousGestureRef = useRef<string>("none");
   const grabStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastProcessTimeRef = useRef<number>(0);
+  const isVisibleRef = useRef<boolean>(true);
 
-  const initializeDetector = useCallback(async () => {
-    try {
-      const model = handPoseDetection.SupportedModels.MediaPipeHands;
-      const detectorConfig: handPoseDetection.MediaPipeHandsTfjsModelConfig = {
-        runtime: "tfjs",
-        modelType: "lite",
-        maxHands: 1,
-      };
+  useEffect(() => {
+    if (!isDetecting || handsRef.current) return;
 
-      const detector = await handPoseDetection.createDetector(
-        model,
-        detectorConfig,
-      );
-      detectorRef.current = detector;
-      setIsLoading(false);
-    } catch {
-      setError("Failed to initialize hand detection");
-      setIsLoading(false);
-    }
-  }, []);
+    console.log("Initializing MediaPipe Hands...");
 
-  const startVideoStream = useCallback(async () => {
-    try {
-      // Stop any existing stream
-      if (videoRef.current?.srcObject) {
-        const oldStream = videoRef.current.srcObject as MediaStream;
-        oldStream.getTracks().forEach((track) => track.stop());
-      }
+    // Suppress MediaPipe debug logs
+    (window as { WASM_LOG_LEVEL?: number }).WASM_LOG_LEVEL = 0;
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+    handsRef.current = new Hands({
+      locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+      },
+    });
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+    handsRef.current.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
 
-        // Wait for video metadata to load before starting detection
-        await new Promise<void>((resolve, reject) => {
-          const video = videoRef.current!;
-
-          // Set a timeout in case video loading takes too long
-          const timeout = setTimeout(() => {
-            video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-            video.removeEventListener("error", handleError);
-            reject(new Error("Video loading timeout"));
-          }, 5000);
-
-          const handleLoadedMetadata = () => {
-            clearTimeout(timeout);
-            video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-            video.removeEventListener("error", handleError);
-
-            // Also wait for the first frame to ensure dimensions are available
-            video
-              .play()
-              .then(() => {
-                // Give a brief moment for the first frame to render
-                setTimeout(resolve, 100);
-              })
-              .catch(reject);
-          };
-
-          const handleError = () => {
-            clearTimeout(timeout);
-            video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-            video.removeEventListener("error", handleError);
-            reject(new Error("Video failed to load"));
-          };
-
-          video.addEventListener("loadedmetadata", handleLoadedMetadata);
-          video.addEventListener("error", handleError);
-        });
-      }
-    } catch (err) {
-      console.error("Camera initialization error:", err);
-      setError(
-        "Failed to access camera. Please ensure camera permissions are granted.",
-      );
-      setIsLoading(false);
-    }
-  }, []);
-
-  const classifyGesture = useCallback((landmarks: DetectedHand[]) => {
-    if (!landmarks.length || !landmarks[0]?.keypoints) return "none";
-
-    const hand = landmarks[0];
-    const fingerTips = [4, 8, 12, 16, 20];
-    const fingerBases = [3, 6, 10, 14, 18];
-    const keypoints = hand.keypoints;
-
-    let extendedFingers = 0;
-
-    // Thumb (special case - compare x coordinates)
-    if (keypoints[fingerTips[0]]?.x > keypoints[fingerBases[0]]?.x) {
-      extendedFingers++;
-    }
-
-    // Other fingers (compare y coordinates)
-    for (let i = 1; i < fingerTips.length; i++) {
-      if (keypoints[fingerTips[i]]?.y < keypoints[fingerBases[i]]?.y) {
-        extendedFingers++;
-      }
-    }
-
-    if (extendedFingers === 5) return "OPEN_HAND";
-    if (extendedFingers === 0) return "FIST";
-    return "PARTIAL";
-  }, []);
-
-  const detectHandPosition = useCallback((landmarks: DetectedHand[]) => {
-    if (!landmarks.length || !landmarks[0]?.keypoints) return { x: 0, y: 0 };
-
-    const hand = landmarks[0];
-    const palmBase = hand.keypoints[0];
-    return {
-      x: palmBase?.x || 0,
-      y: palmBase?.y || 0,
-    };
-  }, []);
-
-  const detectGestures = useCallback(async () => {
-    if (!isDetecting || !detectorRef.current || !videoRef.current) return;
-
-    try {
-      // Validate video dimensions before processing
-      if (
-        videoRef.current.videoWidth === 0 ||
-        videoRef.current.videoHeight === 0
-      ) {
-        // Video not ready yet, skip this frame with a small delay
-        setTimeout(() => {
-          if (isDetecting) requestAnimationFrame(detectGestures);
-        }, 100);
+    handsRef.current.onResults((results: Results) => {
+      if (!results?.multiHandLandmarks?.length) {
+        setCurrentGesture("none");
+        previousGestureRef.current = "none";
+        onGestureDetected?.("none", { x: 0, y: 0 });
         return;
       }
 
-      const hands = await detectorRef.current.estimateHands(videoRef.current);
+      const landmarks = results.multiHandLandmarks[0];
+      const gesture = classifyGesture(landmarks);
+      const position = { x: landmarks[0].x, y: landmarks[0].y };
 
-      // Add extra validation for hands data
-      if (!hands || !Array.isArray(hands)) {
-        console.warn("Invalid hands data received:", hands);
-        requestAnimationFrame(detectGestures);
-        return;
-      }
+      setCurrentGesture(gesture);
+      onGestureDetected?.(gesture, position);
 
-      const currentGesture = classifyGesture(hands);
-      const position = detectHandPosition(hands);
-
-      // Gesture sequence detection for "send" gesture
-      if (
-        previousGestureRef.current === "OPEN_HAND" &&
-        currentGesture === "FIST"
-      ) {
+      // Send gesture detection (open -> fist -> open with movement)
+      if (previousGestureRef.current === "OPEN_HAND" && gesture === "FIST") {
         grabStartRef.current = position;
       }
 
       if (
         previousGestureRef.current === "FIST" &&
-        currentGesture === "OPEN_HAND" &&
+        gesture === "OPEN_HAND" &&
         grabStartRef.current
       ) {
         const distance = Math.sqrt(
@@ -203,51 +75,154 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             Math.pow(position.y - grabStartRef.current.y, 2),
         );
 
-        // Detect forward movement (simplified - using distance threshold)
-        if (distance > 0.1) {
-          onGestureDetected("send", position);
+        if (distance > 0.05) {
+          onGestureDetected?.("send", position);
           grabStartRef.current = null;
         }
       }
 
-      previousGestureRef.current = currentGesture;
+      previousGestureRef.current = gesture;
+    });
 
-      // Continue detection loop
-      requestAnimationFrame(detectGestures);
-    } catch (err) {
-      console.error("Detection error:", err);
+    console.log("MediaPipe Hands initialized successfully");
+    setIsLoading(false);
 
-      // Add a small delay before retrying to prevent error spam
-      setTimeout(() => {
-        if (isDetecting) requestAnimationFrame(detectGestures);
-      }, 1000);
-    }
-  }, [isDetecting, classifyGesture, detectHandPosition, onGestureDetected]);
-
-  useEffect(() => {
-    if (isDetecting) {
-      initializeDetector();
-      startVideoStream();
-    }
-  }, [isDetecting, initializeDetector, startVideoStream]);
-
-  useEffect(() => {
-    if (isDetecting && !isLoading && !error) {
-      detectGestures();
-    }
-  }, [isDetecting, isLoading, error, detectGestures]);
-
-  useEffect(() => {
     return () => {
-      // Cleanup video stream
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const videoElement = videoRef.current;
-      if (videoElement?.srcObject) {
-        const stream = videoElement.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
+      if (handsRef.current) {
+        handsRef.current.close();
+        handsRef.current = null;
       }
     };
-  }, []);
+  }, [isDetecting, onGestureDetected]);
+
+  const classifyGesture = (
+    landmarks: { x: number; y: number; z?: number }[],
+  ): string => {
+    if (!landmarks?.length) return "none";
+
+    // MediaPipe hand landmark indices
+    const fingerTips = [4, 8, 12, 16, 20];
+    const fingerMcp = [2, 5, 9, 13, 17];
+
+    let extendedFingers = 0;
+    const fingerStates: boolean[] = [];
+
+    // Thumb (horizontal check)
+    const thumbExtended =
+      landmarks[fingerTips[0]].x > landmarks[fingerMcp[0]].x;
+    fingerStates.push(thumbExtended);
+    if (thumbExtended) extendedFingers++;
+
+    // Other fingers (vertical check)
+    for (let i = 1; i < 5; i++) {
+      const isExtended = landmarks[fingerMcp[i]].y > landmarks[fingerTips[i]].y;
+      fingerStates.push(isExtended);
+      if (isExtended) extendedFingers++;
+    }
+
+    // Gesture recognition
+    if (extendedFingers === 5) return "OPEN_HAND";
+    if (extendedFingers === 0) return "FIST";
+    if (
+      fingerStates[1] &&
+      fingerStates[2] &&
+      !fingerStates[3] &&
+      !fingerStates[4] &&
+      !fingerStates[0]
+    )
+      return "PEACE";
+    if (
+      fingerStates[0] &&
+      !fingerStates[1] &&
+      !fingerStates[2] &&
+      !fingerStates[3] &&
+      !fingerStates[4]
+    )
+      return "THUMBS_UP";
+    if (
+      !fingerStates[0] &&
+      fingerStates[1] &&
+      !fingerStates[2] &&
+      !fingerStates[3] &&
+      !fingerStates[4]
+    )
+      return "POINT";
+
+    return "PARTIAL";
+  };
+
+  useEffect(() => {
+    if (!isDetecting || !videoRef.current || !handsRef.current) return;
+
+    const setupVideo = async () => {
+      try {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: "user" },
+          audio: false,
+        });
+
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+
+          videoRef.current.onloadedmetadata = async () => {
+            await videoRef.current?.play();
+            console.log("Video started");
+
+            const processFrame = async () => {
+              // Rate limit to ~10 FPS to save resources
+              const now = Date.now();
+              if (now - lastProcessTimeRef.current < 100) {
+                requestAnimationFrame(processFrame);
+                return;
+              }
+              lastProcessTimeRef.current = now;
+
+              // Only process if tab is visible
+              if (!isVisibleRef.current) {
+                requestAnimationFrame(processFrame);
+                return;
+              }
+
+              if (
+                handsRef.current &&
+                videoRef.current &&
+                !videoRef.current.paused
+              ) {
+                await handsRef.current.send({ image: videoRef.current });
+              }
+              requestAnimationFrame(processFrame);
+            };
+
+            processFrame();
+          };
+        }
+      } catch (err) {
+        console.error("Camera error:", err);
+        setError("Failed to access camera");
+      }
+    };
+
+    setupVideo();
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden;
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [isDetecting]);
 
   if (error) {
     return (
@@ -272,16 +247,16 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         autoPlay
         playsInline
         muted
-        className="w-full max-w-md mx-auto rounded-lg shadow-lg transform scale-x-[-1]"
+        className="w-full h-96 object-cover rounded-lg shadow-lg transform scale-x-[-1]"
         style={{ display: isDetecting ? "block" : "none" }}
       />
       {!isDetecting && (
-        <div className="w-full max-w-md mx-auto h-48 bg-gray-100 rounded-lg flex items-center justify-center">
+        <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
           <p className="text-gray-500">Camera off</p>
         </div>
       )}
       <div className="mt-2 text-center text-sm text-gray-600">
-        Status: {previousGestureRef.current || "none"}
+        Status: {currentGesture}
       </div>
     </div>
   );
