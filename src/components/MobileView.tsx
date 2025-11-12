@@ -47,18 +47,6 @@ export const MobileView: React.FC<MobileViewProps> = ({
   >(new Map());
   const connectionAttempted = useRef(false);
 
-  useEffect(() => {
-    if (connectionAttempted.current) return;
-    connectionAttempted.current = true;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const peerParam = urlParams.get("peer");
-    if (peerParam) {
-      setDesktopPeerId(peerParam);
-      connectToDesktop(peerParam);
-    }
-  }, [connectToDesktop]);
-
   const connectToDesktop = async (desktopPeerId: string) => {
     try {
       setConnectionStatus("connecting");
@@ -148,6 +136,18 @@ export const MobileView: React.FC<MobileViewProps> = ({
       setConnectionStatus("idle");
     }
   };
+
+  useEffect(() => {
+    if (connectionAttempted.current) return;
+    connectionAttempted.current = true;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const peerParam = urlParams.get("peer");
+    if (peerParam) {
+      setDesktopPeerId(peerParam);
+      connectToDesktop(peerParam);
+    }
+  }, [connectToDesktop]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
