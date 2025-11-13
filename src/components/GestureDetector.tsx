@@ -134,38 +134,78 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         streamRef.current = stream;
 
-        // Set up video with retry mechanism
-        const setupVideo = () => {
+        // Set up video with enhanced retry mechanism
+        const setupVideo = (retryCount = 0) => {
           if (videoRef.current) {
             const video = videoRef.current;
+            
+            // Clear any existing srcObject
+            if (video.srcObject) {
+              const oldStream = video.srcObject as MediaStream;
+              oldStream.getTracks().forEach(track => track.stop());
+            }
+            
             video.srcObject = stream;
-
-            const attemptPlay = () => {
-              if (video.srcObject === stream && stream.active) {
-                video.play().catch(() => {
-                  // Silent retry on autoplay restrictions
-                });
+            
+            const attemptPlay = async () => {
+              try {
+                if (video.srcObject === stream && stream.active) {
+                  await video.play();
+                  console.log("Video started successfully");
+                }
+              } catch (error) {
+                console.log("Video play failed, retrying...", error);
+                // Retry after a short delay
+                setTimeout(attemptPlay, 100);
               }
             };
-
+            
+            // Multiple event handlers for better reliability
+            const handleCanPlay = () => {
+              console.log("Video can play");
+              attemptPlay();
+            };
+            
+            const handleLoadedMetadata = () => {
+              console.log("Video metadata loaded");
+              attemptPlay();
+            };
+            
+            const handleLoadStart = () => {
+              console.log("Video load started");
+            };
+            
+            video.addEventListener('canplay', handleCanPlay, { once: true });
+            video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+            video.addEventListener('loadstart', handleLoadStart, { once: true });
+            
+            // Initial play attempt
             attemptPlay();
-            video.onloadedmetadata = attemptPlay;
-
-            // Minimal keep-alive mechanism
+            
+            // Enhanced keep-alive mechanism
             const keepVideoAlive = setInterval(() => {
               if (video.paused && stream.active) {
+                console.log("Video paused, restarting...");
                 attemptPlay();
               }
-            }, 2000);
-
+            }, 1000);
+            
             // Store for cleanup
             video.dataset.keepAliveId = keepVideoAlive.toString();
+            
           } else {
-            setTimeout(setupVideo, 100);
+            if (retryCount < 50) { // Max 5 seconds of retries
+              console.log(`Video ref not available, retrying... (${retryCount + 1}/50)`);
+              setTimeout(() => setupVideo(retryCount + 1), 100);
+            } else {
+              console.error("Failed to find video element after 5 seconds");
+              setError("Failed to initialize video element");
+            }
           }
         };
-
-        setupVideo();
+        
+        // Start video setup with a small delay to ensure DOM is ready
+        setTimeout(() => setupVideo(), 200);
 
         // Initialize HandLandmarker with tasks-vision
         const vision = await FilesetResolver.forVisionTasks(
