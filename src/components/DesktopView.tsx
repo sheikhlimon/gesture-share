@@ -229,9 +229,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       setCurrentGesture(gesture);
 
       switch (gesture) {
-        case "PEACE":
+        case "POINT_UP":
           console.log(
-            "Peace gesture detected, connection status:",
+            "Point Up gesture detected, connection status:",
             connectionStatus,
             "peerId:",
             peerId,
@@ -255,15 +255,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
           }
           break;
 
-        case "POINT":
-          // Navigate through files when file selector is open
-          if (showFileSelector && availableFiles.length > 0) {
-            setFileSelectorIndex((prev) => (prev + 1) % availableFiles.length);
-          }
-          break;
-
-        case "THUMBS_UP":
-          console.log("=== THUMBS UP DETECTED ===");
+        case "OK_SIGN":
+          console.log("=== OK SIGN DETECTED - SENDING FILE ===");
           console.log("Selected file:", selectedFile?.name);
           console.log("Selected file size:", selectedFile?.size);
           console.log("Connections size:", connections.size);
@@ -383,22 +376,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 onGestureDetected={handleGestureDetected}
                 isDetecting={true}
               />
-
-              {/* Gesture Status Overlay */}
-              <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded">
-                <p className="text-white text-sm font-medium">
-                  {currentGesture || "none"}
-                </p>
-              </div>
             </div>
 
             {/* Right: Gesture Controls */}
             <div className="lg:w-96 bg-gray-800 rounded-lg p-6">
               <div className="grid grid-cols-1 gap-4 text-sm">
                 <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                  <span className="text-2xl">✌️</span>
+                  <span className="text-2xl">☝️</span>
                   <div>
-                    <p className="font-medium">Peace Sign</p>
+                    <p className="font-medium">Point Up</p>
                     <p className="text-gray-400">Show QR Code</p>
                   </div>
                 </div>
@@ -410,9 +396,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                  <span className="text-2xl">👍</span>
+                  <span className="text-2xl">👌</span>
                   <div>
-                    <p className="font-medium">Thumbs Up</p>
+                    <p className="font-medium">OK Sign</p>
                     <p className="text-gray-400">Send Selected File</p>
                   </div>
                 </div>

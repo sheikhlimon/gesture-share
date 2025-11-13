@@ -30,62 +30,69 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     // MediaPipe hand landmark indices
     const fingerTips = [4, 8, 12, 16, 20];
     const fingerMcp = [2, 5, 9, 13, 17];
+    const fingerPip = [3, 6, 10, 14, 18];
 
     let extendedFingers = 0;
     const fingerStates: boolean[] = [];
 
-    // Thumb detection (upward or outward)
+    // Thumb detection - more strict criteria
     const thumbTip = landmarks[fingerTips[0]];
     const thumbMcp = landmarks[fingerMcp[0]];
+    const thumbIp = landmarks[fingerPip[0]];
+    const indexTip = landmarks[fingerTips[1]];
 
-    const thumbUp =
-      thumbTip.y < thumbMcp.y - 0.02 ||
-      Math.abs(thumbTip.x - thumbMcp.x) > 0.06;
+    // Thumb is extended if tip is significantly above IP joint and to the side
+    const thumbUp = 
+      (thumbTip.y < thumbIp.y - 0.04) && 
+      (Math.abs(thumbTip.x - thumbMcp.x) > 0.08);
 
     fingerStates.push(thumbUp);
     if (thumbUp) extendedFingers++;
 
-    // Other fingers detection (must be significantly extended)
+    // Other fingers detection - more strict criteria using PIP joint
     for (let i = 1; i < 5; i++) {
       const tip = landmarks[fingerTips[i]];
+      const pip = landmarks[fingerPip[i]];
       const mcp = landmarks[fingerMcp[i]];
 
-      const isExtended = tip.y < mcp.y - 0.08;
+      // Finger is extended if tip is significantly above PIP joint
+      const isExtended = tip.y < pip.y - 0.06;
       fingerStates.push(isExtended);
       if (isExtended) extendedFingers++;
     }
 
-    // Gesture recognition
-    if (extendedFingers === 5) return "OPEN_HAND";
+    // OK Sign detection - thumb and index finger touching
+    const thumbIndexDistance = Math.sqrt(
+      Math.pow(thumbTip.x - indexTip.x, 2) + 
+      Math.pow(thumbTip.y - indexTip.y, 2)
+    );
+
+    if (thumbIndexDistance < 0.05 && // thumb and index touching
+        !fingerStates[2] && !fingerStates[3] && !fingerStates[4]) { // other fingers down
+      return "OK_SIGN";
+    }
+
+    // Fist detection - very strict, no fingers should be extended
     if (extendedFingers === 0) return "FIST";
+    
+    // Open hand detection - all fingers extended
+    if (extendedFingers === 5) return "OPEN_HAND";
 
+    // Point Up - only index finger extended and pointing up
     if (
-      fingerStates[1] &&
-      fingerStates[2] &&
-      !fingerStates[3] &&
-      !fingerStates[4]
+      !fingerStates[0] &&  // thumb not extended
+      fingerStates[1] &&   // index extended
+      !fingerStates[2] &&  // middle not extended
+      !fingerStates[3] &&  // ring not extended
+      !fingerStates[4]     // pinky not extended
     ) {
-      return "PEACE";
-    }
-
-    if (
-      fingerStates[0] &&
-      !fingerStates[1] &&
-      !fingerStates[2] &&
-      !fingerStates[3] &&
-      !fingerStates[4]
-    ) {
-      return "THUMBS_UP";
-    }
-
-    if (
-      !fingerStates[0] &&
-      fingerStates[1] &&
-      !fingerStates[2] &&
-      !fingerStates[3] &&
-      !fingerStates[4]
-    ) {
-      return "POINT";
+      // Check if index finger is pointing up (y coordinate significantly higher than other parts)
+      const indexMcp = landmarks[fingerMcp[1]];
+      const indexPointingUp = indexTip.y < indexMcp.y - 0.1;
+      
+      if (indexPointingUp) {
+        return "POINT_UP";
+      }
     }
 
     return "PARTIAL";
