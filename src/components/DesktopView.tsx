@@ -85,6 +85,7 @@ interface DesktopViewProps {
 }
 
 export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
+  console.log("=== DesktopView Component Mounted ===");
   const [peerId, setPeerId] = useState("");
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -117,6 +118,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
 
   // Generate image URL when file is selected
   useEffect(() => {
+    console.log("=== DesktopView selectedFile useEffect ===");
+    console.log("selectedFile:", selectedFile?.name);
     if (selectedFile && selectedFile.type.startsWith('image/')) {
       const url = URL.createObjectURL(selectedFile);
       setImageUrl(url);
