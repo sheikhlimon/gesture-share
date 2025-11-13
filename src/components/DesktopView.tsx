@@ -420,7 +420,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
 
     return (
       <div className="min-h-screen bg-gray-900 text-white">
-        {/* QR Code - Centered modal matching website design */}
+          {/* QR Code - Centered modal matching website design */}
         {showQRModal && connectionStatus !== "connected" && peerId && (
           <div
             className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -439,19 +439,13 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                   size={200}
                   title=""
                 />
-                <div className="mt-3 space-y-2">
+                <div className="mt-3">
                   <p className="text-gray-400 text-xs">
-                    Status:{" "}
-                    <span className="font-medium text-white">
-                      {connectionStatus}
-                    </span>
+                    📱 Scan this QR code with your phone
                   </p>
-                  <div className="text-xs text-gray-500">
-                    <p>Network: {currentHost}</p>
-                    <p className="mt-1">
-                      Make sure your phone is on the same WiFi network
-                    </p>
-                  </div>
+                  <p className="text-gray-500 text-xs mt-1">
+                    Connect from anywhere, any network
+                  </p>
                 </div>
               </div>
             </div>
@@ -643,20 +637,24 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
           </div>
         </div>
 
-        {/* File Transfer Notification */}
+        {/* Modern File Transfer Notification */}
         {notification.show && (
           <div
-            className={`fixed top-20 right-4 z-50 max-w-sm animate-pulse ${
+            className={`fixed top-20 right-4 z-50 max-w-sm transform transition-all duration-300 ease-out animate-in slide-in-from-right-5 ${
               notification.type === "success"
-                ? "bg-green-600 border-green-500"
-                : "bg-red-600 border-red-500"
-            } text-white px-6 py-4 rounded-lg shadow-lg border`}
+                ? "bg-white/95 backdrop-blur-lg border-green-200 shadow-green-100"
+                : "bg-white/95 backdrop-blur-lg border-red-200 shadow-red-100"
+            } border-2 rounded-2xl shadow-2xl p-4`}
           >
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0">
+            <div className="flex items-start gap-3">
+              <div className={`flex-shrink-0 rounded-full p-2 ${
+                notification.type === "success"
+                  ? "bg-green-100 text-green-600"
+                  : "bg-red-100 text-red-600"
+              }`}>
                 {notification.type === "success" ? (
                   <svg
-                    className="w-6 h-6"
+                    className="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -664,13 +662,13 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      strokeWidth={2.5}
+                      d="M5 13l4 4L19 7"
                     />
                   </svg>
                 ) : (
                   <svg
-                    className="w-6 h-6"
+                    className="w-5 h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -678,15 +676,51 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      strokeWidth={2.5}
+                      d="M6 18L18 6M6 6l12 12"
                     />
                   </svg>
                 )}
               </div>
-              <div className="flex-1">
-                <p className="font-medium">{notification.message}</p>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold text-sm ${
+                  notification.type === "success" ? "text-green-800" : "text-red-800"
+                }`}>
+                  {notification.type === "success" ? "Success" : "Error"}
+                </p>
+                <p className={`text-sm mt-1 ${
+                  notification.type === "success" ? "text-green-600" : "text-red-600"
+                }`}>
+                  {notification.message}
+                </p>
               </div>
+              <button
+                onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+                className={`flex-shrink-0 rounded-full p-1 transition-colors ${
+                  notification.type === "success"
+                    ? "hover:bg-green-100 text-green-400"
+                    : "hover:bg-red-100 text-red-400"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Auto-dismiss indicator */}
+            <div className={`mt-3 flex items-center gap-2 text-xs ${
+              notification.type === "success" ? "text-green-600" : "text-red-600"
+            }`}>
+              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                notification.type === "success" ? "bg-green-500" : "bg-red-500"
+              }`} />
+              <span>Auto-dismissing in 4 seconds</span>
             </div>
           </div>
         )}
