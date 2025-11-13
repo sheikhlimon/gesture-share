@@ -43,6 +43,13 @@ export const MobileView: React.FC<MobileViewProps> = ({
   >("idle");
   const [desktopPeerId, setDesktopPeerId] = useState("");
   const [fileReceivingStatus, setFileReceivingStatus] = useState<string>("");
+  const [receivedFiles, setReceivedFiles] = useState<
+    Array<{
+      name: string;
+      size: number;
+      timestamp: Date;
+    }>
+  >([]);
   const fileChunksRef = useRef<
     Map<string, { chunks: ArrayBuffer[]; info: FileMetadata }>
   >(new Map());
@@ -160,6 +167,22 @@ export const MobileView: React.FC<MobileViewProps> = ({
                 setFileReceivingStatus(
                   `Downloaded: ${existingFileData.info.fileName}`,
                 );
+
+                // Add to received files list
+                setReceivedFiles((prev) => [
+                  ...prev,
+                  {
+                    name: existingFileData.info.fileName,
+                    size: existingFileData.info.fileSize || 0,
+                    timestamp: new Date(),
+                  },
+                ]);
+
+                // Clear status after 3 seconds
+                setTimeout(() => {
+                  setFileReceivingStatus("");
+                }, 3000);
+
                 fileChunksRef.current.delete(
                   fileTransferData.fileId || "default",
                 );
@@ -285,9 +308,60 @@ export const MobileView: React.FC<MobileViewProps> = ({
                 </p>
               </div>
             )}
+
+            {/* Received Files History */}
+            {receivedFiles.length > 0 && (
+              <div className="mt-6 border-t pt-4">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">
+                  Recently Received Files
+                </h3>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {receivedFiles
+                    .slice(-3)
+                    .reverse()
+                    .map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-gray-50 rounded-lg p-2"
+                      >
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <svg
+                            className="w-4 h-4 text-green-600 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span className="text-xs text-gray-700 truncate">
+                            {file.name}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {formatFileSize(file.size)}
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
+
+  // Helper function to format file size
+  function formatFileSize(bytes: number): string {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+  }
 };

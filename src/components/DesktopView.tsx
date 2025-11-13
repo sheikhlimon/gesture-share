@@ -102,6 +102,11 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
     const [currentGesture, setCurrentGesture] = useState<string>("");
     const [currentHost, setCurrentHost] = useState<string>("");
     const [showQRModal, setShowQRModal] = useState(false);
+    const [notification, setNotification] = useState<{
+      type: "success" | "error";
+      message: string;
+      show: boolean;
+    }>({ type: "success", message: "", show: false });
 
     // Refs for accessing current state in callbacks
     const connectionStatusRef = useRef(connectionStatus);
@@ -315,6 +320,16 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
       };
     }, []);
 
+    const showNotification = useCallback(
+      (type: "success" | "error", message: string) => {
+        setNotification({ type, message, show: true });
+        setTimeout(() => {
+          setNotification((prev) => ({ ...prev, show: false }));
+        }, 4000);
+      },
+      [],
+    );
+
     const sendFile = useCallback(
       async (file: File, connection: Peer.DataConnection) => {
         try {
@@ -349,11 +364,15 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             type: "file-end",
             fileId,
           } as FileEnd);
+
+          // Show success notification
+          showNotification("success", `✅ ${file.name} sent successfully!`);
         } catch (error) {
           console.error("Failed to send file:", error);
+          showNotification("error", `❌ Failed to send ${file.name}`);
         }
       },
-      [],
+      [showNotification],
     );
 
     const handleGestureDetected = useCallback(
@@ -623,6 +642,54 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             </div>
           </div>
         </div>
+
+        {/* File Transfer Notification */}
+        {notification.show && (
+          <div
+            className={`fixed top-20 right-4 z-50 max-w-sm animate-pulse ${
+              notification.type === "success"
+                ? "bg-green-600 border-green-500"
+                : "bg-red-600 border-red-500"
+            } text-white px-6 py-4 rounded-lg shadow-lg border`}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex-shrink-0">
+                {notification.type === "success" ? (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="font-medium">{notification.message}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   },
