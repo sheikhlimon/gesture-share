@@ -175,16 +175,76 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
     const initializeDetection = async () => {
       try {
-        // Get camera stream with desktop-optimized constraints
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-            facingMode: "user",
-            frameRate: { ideal: 30, max: 60 },
-          },
-          audio: false,
-        });
+        // Enhanced camera permission handling with retry logic
+        let stream: MediaStream | null = null;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!stream && retryCount < maxRetries) {
+          try {
+            console.log(`Attempting to get camera access (attempt ${retryCount + 1}/${maxRetries})`);
+            
+            // Get camera stream with permissive fallback constraints
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: retryCount === 0 ? {
+                width: { ideal: 1280, max: 1920 },
+                height: { ideal: 720, max: 1080 },
+                facingMode: "user",
+                frameRate: { ideal: 30, max: 60 },
+              } : {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                facingMode: "user",
+              }, // Fallback to lower resolution on retry
+              audio: false,
+            });
+            
+            console.log("Camera access granted successfully");
+            break;
+            
+          } catch (mediaError: any) {
+            console.warn(`Camera access attempt ${retryCount + 1} failed:`, mediaError);
+            
+            // Handle different permission errors
+            if (mediaError.name === 'NotAllowedError') {
+              // User denied permission - don't retry automatically
+              setError("Camera permission denied. Please allow camera access and refresh the page.");
+              setIsLoading(false);
+              return;
+            } else if (mediaError.name === 'NotFoundError') {
+              // No camera found
+              setError("No camera detected. Please connect a camera and refresh the page.");
+              setIsLoading(false);
+              return;
+            } else if (mediaError.name === 'NotReadableError') {
+              // Camera is already in use
+              if (retryCount < maxRetries - 1) {
+                console.log("Camera in use, retrying after delay...");
+                await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                retryCount++;
+                continue;
+              } else {
+                setError("Camera is already in use by another application. Please close other camera apps and refresh.");
+                setIsLoading(false);
+                return;
+              }
+            } else {
+              // Other errors - retry
+              if (retryCount < maxRetries - 1) {
+                console.log("Retrying camera access after error...");
+                await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                retryCount++;
+                continue;
+              }
+            }
+          }
+        }
+        
+        if (!stream) {
+          setError("Failed to access camera after multiple attempts. Please refresh the page and try again.");
+          setIsLoading(false);
+          return;
+        }
 
         streamRef.current = stream;
 
@@ -432,6 +492,18 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         <p className="text-red-400 text-xs mt-2">
           Please allow camera access and refresh the page
         </p>
+        <button
+          onClick={() => {
+            setError(null);
+            setIsLoading(true);
+            // Trigger re-initialization by forcing a re-render
+            setTimeout(() => setIsDetecting(false), 100);
+            setTimeout(() => setIsDetecting(true), 200);
+          }}
+          className="mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
+        >
+          Retry Camera Access
+        </button>
       </div>
     );
   }
@@ -442,6 +514,12 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         <p className="text-gray-300 text-sm">
           Initializing camera and hand detection...
         </p>
+        <p className="text-gray-400 text-xs mt-2">
+          Please allow camera access when prompted by your browser
+        </p>
+        <div className="mt-3">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mx-auto"></div>
+        </div>
       </div>
     );
   }
