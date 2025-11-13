@@ -63,10 +63,10 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
       <div className="bg-gray-800 p-6 rounded-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden flex flex-col">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-white">Select File</h2>
+          <h2 className="text-lg font-semibold text-white">Select File</h2>
           <button
             onClick={onClose}
-            className="text-white hover:text-gray-300 text-2xl"
+            className="text-white hover:text-gray-300 text-xl"
           >
             ✕
           </button>

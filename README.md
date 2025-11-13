@@ -1,70 +1,82 @@
 # Gesture Share 🖐️
 
-Share files between your computer and phone using simple hand gestures. Just point, make a fist, or do a peace sign - no cables or cloud storage needed!
+Share files between devices using hand gestures. No cables or cloud storage needed.
 
 ## 🎯 How It Works
 
-1. **Point Up (☝️)** - Show QR code to connect your phone
-2. **Make a Fist (✊)** - Choose a file to share  
-3. **Peace Sign (✌️)** - Send the file instantly
+- **Point Up (☝️)** - Show QR code to connect your phone
+- **Make a Fist (✊)** - Choose a file to share  
+- **Peace Sign (✌️)** - Send the file instantly
 
 ## 🚀 Quick Start
 
-### 1. Open the App
-Visit the deployed site or run locally:
 ```bash
+# Clone and setup
+git clone <repository-url>
+cd gesture-share
 npm install
 npm run dev
 # Open http://localhost:5173
 ```
 
-### 2. Allow Camera
-Click "Allow" when prompted for camera access
+### Step-by-Step Instructions
 
-### 3. Connect Your Phone
-- Point up (☝️) to show the QR code
-- Scan it with your phone's camera
-- Connection is ready!
-
-### 4. Share Files
-- Make a fist (✊) to pick a file
-- Make a peace sign (✌️) to send it
+1. **Allow Camera** - Click "Allow" when prompted for camera access
+2. **Point Up** - Raise your index finger to show the QR code
+3. **Scan QR** - Use your phone's camera to scan the code
+4. **Make a Fist** - Select the file you want to share
+5. **Peace Sign** - Send the file instantly to your phone
 
 ## ✨ Features
 
 - **🤚 Gesture Control** - No mouse or keyboard needed
-- **📱 Universal Connection** - Works with any phone, any network
-- **⚡ Direct Transfer** - Files go straight to your device
-- **🎨 Modern Notifications** - See when files are sent successfully
-- **🔄 Instant Feedback** - Visual indicators for every action
-
-## 🛠️ Tech Stack
-
-- **React** + **TypeScript** - Modern web app
-- **MediaPipe** - Google's hand tracking technology
-- **WebRTC** - Peer-to-peer file sharing
-- **Vercel** - Production deployment
+- **⚡ Direct Transfer** - Files go straight to your device via WebRTC
+- **📱 Universal Connection** - Works with any phone with a camera
+- **🔄 Real-time Feedback** - Visual indicators and gesture recognition
+- **🎯 Accurate Detection** - Powered by Google's MediaPipe technology
+- **🌐 Network Agnostic** - Works on WiFi, cellular, or any internet connection
 
 ## 📱 System Requirements
 
-- **Desktop**: Modern browser + webcam
-- **Mobile**: Any phone with camera
-- **Network**: Internet connection (WiFi recommended but not required)
+### Desktop
+- Modern browser (Chrome, Firefox, Safari, Edge)
+- Built-in or external webcam
+- Internet connection
+
+### Mobile
+- Any smartphone with camera
+- Modern web browser
+- Internet connection (WiFi or cellular)
+
+### Network
+- Active internet connection required
+- Local network or internet both work
+- No special configuration needed
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19 + TypeScript for modern, type-safe development
+- **Hand Tracking**: MediaPipe Tasks Vision for accurate gesture recognition
+- **P2P Communication**: WebRTC + PeerJS for direct file transfer
+- **Styling**: Tailwind CSS for responsive, utility-first design
+- **Build Tool**: Vite for fast development and optimized builds
+- **Code Quality**: ESLint + Prettier + Husky for consistent code
 
 ## 🔧 Development
 
-Want to contribute? Check out our **[Development Guide](./DEVELOPMENT.md)** for detailed setup instructions.
+Want to contribute? Check out our **[Development Guide](./DEVELOPMENT.md)** for detailed setup instructions, code style guidelines, and common debugging tips.
 
 ```bash
-# Quick start
-npm install
-npm run dev
-# Open http://localhost:5173
+# Available scripts
+npm run dev        # Start development server
+npm run build      # Build for production
+npm run lint       # Check code quality
+npm run format     # Format code with Prettier
 ```
 
 ## 📄 License
 
-MIT License - feel free to use and contribute!
+MIT License - feel free to use, modify, and contribute to this project.
 
 ---
 

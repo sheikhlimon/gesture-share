@@ -471,7 +471,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
-                <div className="text-4xl mb-4">✊</div>
+                <div className="text-3xl mb-4">✊</div>
                 <h3 className="text-lg font-semibold mb-2 font-display">
                   Fist Gesture Detected
                 </h3>
@@ -526,7 +526,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                     />
                   </svg>
                 </div>
-                <h1 className="text-3xl font-bold font-display bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">Gesture Share</h1>
+                <h1 className="text-2xl font-bold font-display bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">Gesture Share</h1>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -572,24 +572,24 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
               <div className="lg:w-[26rem] bg-gray-800 rounded-lg p-6">
                 <div className="grid grid-cols-1 gap-4 text-base">
                   <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
-                    <span className="text-3xl">☝️</span>
+                    <span className="text-2xl">☝️</span>
                     <div>
-                      <p className="font-semibold text-lg text-center">Point Up</p>
-                      <p className="text-gray-400 text-center">Show QR Code</p>
+                      <p className="font-semibold text-base text-center">Point Up</p>
+                      <p className="text-gray-400 text-sm text-center">Show QR Code</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
-                    <span className="text-3xl">✊</span>
+                    <span className="text-2xl">✊</span>
                     <div>
-                      <p className="font-semibold text-lg text-center">Fist</p>
-                      <p className="text-gray-400 text-center">Open File Menu</p>
+                      <p className="font-semibold text-base text-center">Fist</p>
+                      <p className="text-gray-400 text-sm text-center">Open File Menu</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
-                    <span className="text-3xl">✌️</span>
+                    <span className="text-2xl">✌️</span>
                     <div>
-                      <p className="font-semibold text-lg text-center">Peace Sign</p>
-                      <p className="text-gray-400 text-center">Send Selected File</p>
+                      <p className="font-semibold text-base text-center">Peace Sign</p>
+                      <p className="text-gray-400 text-sm text-center">Send Selected File</p>
                     </div>
                   </div>
                 </div>

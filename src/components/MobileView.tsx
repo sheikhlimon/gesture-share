@@ -220,7 +220,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-md mx-auto px-4 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-slate-900 mb-2">
+          <h1 className="text-xl font-bold text-slate-900 mb-2">
             Gesture Share
           </h1>
           <p className="text-slate-600">Connect to desktop to receive files</p>
@@ -270,7 +270,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
                   </svg>
                 )}
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 {connectionStatus === "connected"
                   ? "Connected"
                   : connectionStatus === "connecting"
