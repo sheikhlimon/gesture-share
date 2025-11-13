@@ -47,7 +47,8 @@ const getNetworkIP = async (): Promise<string> => {
                 if (
                   match &&
                   !match[0].startsWith("127.") &&
-                  !match[0].startsWith("0.")
+                  !match[0].startsWith("0.") &&
+                  !match[0].startsWith("169.254") // Exclude link-local addresses
                 ) {
                   resolve(match[0]);
                   return;
@@ -55,8 +56,9 @@ const getNetworkIP = async (): Promise<string> => {
               }
             }
             resolve("");
-          }, 1000);
-        });
+          }, 2000); // Increased timeout for better reliability
+        })
+        .catch(() => resolve(""));
     } catch {
       resolve("");
     }
@@ -67,16 +69,15 @@ const getNetworkIP = async (): Promise<string> => {
     return `${localIP}:${port}`;
   }
 
-  // Fallback to manual input if we can't detect the IP
-  const manualIP = window.prompt(
-    "Enter your computer's IP address (e.g., 192.168.1.100):",
-  );
-  if (manualIP) {
-    return `${manualIP}:${port}`;
+  // Try alternative method: use window.location.hostname if it's an IP address
+  const hostname = window.location.hostname;
+  if (hostname && /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
+    return `${hostname}:${port}`;
   }
 
-  // Last resort - show localhost (won't work for mobile but allows testing)
-  return `localhost:${port}`;
+  // Fallback: use a common local network IP range (users can change it if needed)
+  console.log("Could not auto-detect IP, using common fallback");
+  return `192.168.1.100:${port}`;
 };
 
 interface DesktopViewProps {
@@ -396,12 +397,18 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 size={200}
                 title=""
               />
-              <p className="mt-3 text-gray-400 text-xs">
-                Status:{" "}
-                <span className="font-medium text-white">
-                  {connectionStatus}
-                </span>
-              </p>
+              <div className="mt-3 space-y-2">
+                <p className="text-gray-400 text-xs">
+                  Status:{" "}
+                  <span className="font-medium text-white">
+                    {connectionStatus}
+                  </span>
+                </p>
+                <div className="text-xs text-gray-500">
+                  <p>Network: {currentHost}</p>
+                  <p className="mt-1">Make sure your phone is on the same WiFi network</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
