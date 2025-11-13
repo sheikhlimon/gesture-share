@@ -23,61 +23,64 @@ interface FileEnd {
   fileId: string;
 }
 
-// Get the actual network IP for mobile connection
-const getNetworkIP = async (): Promise<string> => {
+// Get connection URL for QR code (works in both local and production)
+const getConnectionUrl = async (): Promise<string> => {
+  const hostname = window.location.hostname;
   const port = window.location.port || "5174";
+  const isProduction =
+    !hostname.includes("localhost") &&
+    !hostname.includes("127.0.0.1") &&
+    hostname !== "localhost";
 
-  // Try to get the local network IP
-  const localIP = await new Promise<string>((resolve) => {
-    try {
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-      });
-      pc.createDataChannel("");
-      pc.createOffer()
-        .then((offer) => pc.setLocalDescription(offer))
-        .then(() => {
-          setTimeout(() => {
-            const lines = pc.localDescription?.sdp?.split("\n") || [];
-            pc.close();
+  if (isProduction) {
+    // In production, use the deployed domain
+    return `${window.location.protocol}//${hostname}${window.location.port ? `:${port}` : ""}`;
+  } else {
+    // In local development, try to get the local network IP
+    const localIP = await new Promise<string>((resolve) => {
+      try {
+        const pc = new RTCPeerConnection({
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        });
+        pc.createDataChannel("");
+        pc.createOffer()
+          .then((offer) => pc.setLocalDescription(offer))
+          .then(() => {
+            setTimeout(() => {
+              const lines = pc.localDescription?.sdp?.split("\n") || [];
+              pc.close();
 
-            for (const line of lines) {
-              if (line.includes("candidate:") && line.includes("typ host")) {
-                const match = line.match(/(\d+\.\d+\.\d+\.\d+)/);
-                if (
-                  match &&
-                  !match[0].startsWith("127.") &&
-                  !match[0].startsWith("0.") &&
-                  !match[0].startsWith("169.254") // Exclude link-local addresses
-                ) {
-                  resolve(match[0]);
-                  return;
+              for (const line of lines) {
+                if (line.includes("candidate:") && line.includes("typ host")) {
+                  const match = line.match(/(\d+\.\d+\.\d+\.\d+)/);
+                  if (
+                    match &&
+                    !match[0].startsWith("127.") &&
+                    !match[0].startsWith("0.") &&
+                    !match[0].startsWith("169.254") // Exclude link-local addresses
+                  ) {
+                    resolve(match[0]);
+                    return;
+                  }
                 }
               }
-            }
-            resolve("");
-          }, 2000); // Increased timeout for better reliability
-        })
-        .catch(() => resolve(""));
-    } catch {
-      resolve("");
+              resolve("");
+            }, 2000);
+          })
+          .catch(() => resolve(""));
+      } catch {
+        resolve("");
+      }
+    });
+
+    // If we got a valid local IP, use it
+    if (localIP) {
+      return `http://${localIP}:${port}`;
     }
-  });
 
-  // If we got a valid local IP, use it
-  if (localIP) {
-    return `${localIP}:${port}`;
+    // Fallback: use localhost for local development
+    return `http://localhost:${port}`;
   }
-
-  // Try alternative method: use window.location.hostname if it's an IP address
-  const hostname = window.location.hostname;
-  if (hostname && /^\d+\.\d+\.\d+\.\d+$/.test(hostname)) {
-    return `${hostname}:${port}`;
-  }
-
-  // Fallback: use a common local network IP range (users can change it if needed)
-  console.log("Could not auto-detect IP, using common fallback");
-  return `192.168.1.100:${port}`;
 };
 
 interface DesktopViewProps {
@@ -126,8 +129,8 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
     }, [selectedFile]);
 
     useEffect(() => {
-      getNetworkIP().then((ip) => {
-        setCurrentHost(ip);
+      getConnectionUrl().then((url) => {
+        setCurrentHost(url);
       });
     }, []);
 
@@ -160,9 +163,27 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         const newPeer = new Peer.Peer("", {
           config: {
             iceServers: [
+              // Google STUN servers (most reliable)
               { urls: "stun:stun.l.google.com:19302" },
               { urls: "stun:stun1.l.google.com:19302" },
               { urls: "stun:stun2.l.google.com:19302" },
+
+              // Free STUN servers from other providers
+              { urls: "stun:stun.cloudflare.com:3478" },
+              { urls: "stun:stun.services.mozilla.com" },
+              { urls: "stun:stun.relay.metered.ca:80" },
+
+              // Free TURN servers (for fallback when STUN fails)
+              {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
+              {
+                urls: "turn:openrelay.metered.ca:443",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
             ],
           },
         });
@@ -395,7 +416,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                   Connect Your Phone
                 </h3>
                 <QRDisplay
-                  value={`http://${currentHost}/connect?peer=${peerId}`}
+                  value={`${currentHost}/connect?peer=${peerId}`}
                   size={200}
                   title=""
                 />
@@ -508,9 +529,11 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                   }`}
                 ></div>
                 <span className="text-sm">
-                  {connectionStatus === "connected" ? "Connected" : 
-                   connectionStatus === "connecting" ? "Connecting..." : 
-                   "Not Connected"}
+                  {connectionStatus === "connected"
+                    ? "Connected"
+                    : connectionStatus === "connecting"
+                      ? "Connecting..."
+                      : "Not Connected"}
                 </span>
               </div>
             </div>
