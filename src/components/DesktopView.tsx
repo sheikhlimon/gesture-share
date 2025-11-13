@@ -231,10 +231,10 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     // Show the button overlay for user to click
     setShowFilePickerButton(true);
     
-    // Auto-hide after 5 seconds if not clicked
+    // Auto-hide after 10 seconds if not clicked
     setTimeout(() => {
       setShowFilePickerButton(false);
-    }, 5000);
+    }, 10000);
   }, []);
 
   const sendFile = useCallback(
@@ -405,7 +405,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 Select File to Share
               </button>
               <p className="text-xs text-gray-500 mt-3">
-                This button will disappear in 5 seconds
+                This button will disappear in 10 seconds
               </p>
             </div>
           </div>
