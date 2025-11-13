@@ -21,6 +21,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState<number>(0); // For UI display
   const previousGestureRef = useRef<string>("none");
   const lastProcessTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
@@ -29,6 +30,12 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const gestureHistoryRef = useRef<string[]>([]);
   const stableGestureRef = useRef<string>("none");
   const gestureCountRef = useRef<Map<string, number>>(new Map());
+  
+  // Cooldown tracking - prevent new gestures immediately after detection
+  const lastGestureTimeRef = useRef<number>(0);
+  const gestureCooldownRef = useRef<number>(3000); // 3 seconds cooldown
+  const isInCooldownRef = useRef<boolean>(false);
+  const cooldownIntervalRef = useRef<number | null>(null);
 
   const classifyGesture = (
     landmarks: { x: number; y: number; z?: number }[],
@@ -432,12 +439,53 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                 }
               }
 
-              // Only trigger callback if stable gesture changed
+              // Check cooldown before triggering callback
+              const currentTime = Date.now();
+              const timeSinceLastGesture = currentTime - lastGestureTimeRef.current;
+              const cooldownActive = timeSinceLastGesture < gestureCooldownRef.current;
+              
+              // Only trigger callback if stable gesture changed and not in cooldown
               if (newStableGesture !== stableGestureRef.current) {
                 stableGestureRef.current = newStableGesture;
-                if (previousGestureRef.current !== newStableGesture) {
+                
+                // Allow "none", "open hand", and "partial" gestures always (no cooldown)
+                if (newStableGesture === "none" || newStableGesture === "OPEN_HAND" || newStableGesture === "PARTIAL") {
+                  if (previousGestureRef.current !== newStableGesture) {
+                    previousGestureRef.current = newStableGesture;
+                    onGestureDetected?.(newStableGesture, position);
+                  }
+                } else if (!cooldownActive) {
+                  // Only apply cooldown to main gestures: POINT_UP, FIST, PEACE_SIGN
                   previousGestureRef.current = newStableGesture;
+                  lastGestureTimeRef.current = currentTime;
                   onGestureDetected?.(newStableGesture, position);
+                  isInCooldownRef.current = true;
+                  
+                  // Start cooldown UI display
+                  setCooldownRemaining(3);
+                  if (cooldownIntervalRef.current) {
+                    clearInterval(cooldownIntervalRef.current);
+                  }
+                  cooldownIntervalRef.current = window.setInterval(() => {
+                    setCooldownRemaining(prev => {
+                      if (prev <= 1) {
+                        clearInterval(cooldownIntervalRef.current!);
+                        cooldownIntervalRef.current = null;
+                        isInCooldownRef.current = false;
+                        return 0;
+                      }
+                      return prev - 1;
+                    });
+                  }, 1000);
+                  
+                  console.log(`Gesture "${newStableGesture}" detected. Cooldown activated for ${gestureCooldownRef.current}ms`);
+                } else {
+                  // Main gesture detected but cooldown is active
+                  const remainingTime = Math.ceil((gestureCooldownRef.current - timeSinceLastGesture) / 1000);
+                  if (cooldownRemaining !== remainingTime && remainingTime > 0) {
+                    setCooldownRemaining(remainingTime);
+                  }
+                  console.log(`Gesture "${newStableGesture}" detected but cooldown active (${remainingTime}s remaining)`);
                 }
               }
             }
@@ -472,6 +520,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
+      }
+      // Clear cooldown interval on cleanup
+      if (cooldownIntervalRef.current) {
+        clearInterval(cooldownIntervalRef.current);
+        cooldownIntervalRef.current = null;
       }
     };
   }, [isDetecting, onGestureDetected, retryKey]);
@@ -535,6 +588,27 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         muted
         className="w-full h-full object-cover rounded-lg bg-black transform scale-x-[-1]"
       />
+      
+      {/* Cooldown indicator - show in top left when active */}
+      {cooldownRemaining > 0 && (
+        <div className="absolute top-4 left-4 bg-orange-900/90 backdrop-blur-sm px-4 py-3 rounded-lg border border-orange-700/50 shadow-lg">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center">
+              <div className="relative">
+                <div className="w-8 h-8 border-2 border-orange-500/30 rounded-full"></div>
+                <div className="absolute inset-0 border-2 border-orange-500 rounded-full border-t-transparent animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">{cooldownRemaining}</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-white">
+              <p className="text-sm font-medium">Waiting...</p>
+              <p className="text-xs text-orange-300">New gesture in {cooldownRemaining}s</p>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Gesture overlay - show current gesture in top right */}
       {currentGesture && currentGesture !== "none" && (

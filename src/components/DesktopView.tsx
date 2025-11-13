@@ -346,8 +346,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
           triggerFilePickerFlow();
           break;
 
-        case "OK_SIGN":
-          console.log("=== OK SIGN DETECTED - SENDING FILE ===");
+        case "PEACE_SIGN":
+          console.log("=== PEACE SIGN DETECTED - SENDING FILE ===");
           console.log("Selected file:", selectedFile?.name);
           console.log("Selected file size:", selectedFile?.size);
           console.log("Connections size:", connections.size);
@@ -527,9 +527,9 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                  <span className="text-2xl">👌</span>
+                  <span className="text-2xl">✌️</span>
                   <div>
-                    <p className="font-medium">OK Sign</p>
+                    <p className="font-medium">Peace Sign</p>
                     <p className="text-gray-400">Send Selected File</p>
                   </div>
                 </div>
