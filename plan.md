@@ -1,227 +1,159 @@
-# Photo Drop - Gesture-Based File Sharing Project Plan
+# Gesture Share - Gesture-Based File Sharing Project Plan
 
 ## Project Overview
-A web application that allows desktop users to send photos to mobile devices using hand gestures, with file transfer powered by WebRTC and device pairing via QR codes.
+Gesture Share is a revolutionary web application that enables seamless file sharing between desktop and mobile devices using intuitive hand gestures. Leveraging cutting-edge AI technologies including MediaPipe for hand tracking and WebRTC for peer-to-peer connections, this platform eliminates the need for traditional file transfer methods.
 
-## Final Project Structure
+## Project Structure
 ```
 src/
  ├── components/
- │    ├── GestureDetector.jsx
- │    ├── QRDisplay.jsx
- │    └── ReceiverView.jsx
- ├── utils/
- │    └── connection.js
- ├── App.jsx
- └── main.jsx
+ │    ├── GestureDetector.tsx      # Hand gesture detection and recognition
+ │    ├── DesktopView.tsx          # Desktop interface with webcam feed
+ │    ├── MobileView.tsx           # Mobile receiving interface
+ │    ├── QRDisplay.tsx            # QR code generation and display
+ │    └── FileSelector.tsx         # File selection interface
+ ├── types/
+ │    └── gesture.ts               # TypeScript type definitions for gestures
+ ├── App.tsx                       # Main application component
+ ├── main.tsx                      # Application entry point
+ └── index.css                     # Global styles and animations
 public/
- └── index.html
+ └── index.html                    # HTML template
 ```
 
 ## Technology Stack
 
 ### Frontend Framework
-- React + Vite for development and building
-- TailwindCSS for styling
+- **React 19**: Modern React with latest features and optimizations
+- **TypeScript**: Type-safe development with comprehensive type definitions
+- **Vite**: Fast development and build tool with HMR
+- **TailwindCSS**: Utility-first CSS framework for rapid styling
 
 ### AI & Gesture Detection
-- MediaPipe + TensorFlow.js for hand tracking
-- Fingerpose for gesture classification
+- **@mediapipe/tasks-vision**: Latest MediaPipe vision tasks API
+- **TensorFlow.js**: Machine learning inference in browser
+- **Hand Landmarker**: Precise hand landmark detection and tracking
 
-### File Sharing
-- PeerJS (WebRTC) for peer-to-peer file transfer
+### File Sharing & Communication
+- **PeerJS**: Simplified WebRTC peer-to-peer connections
+- **WebRTC**: Real-time communication between browsers
+- **DataChannel API**: Direct file transfer between connected peers
 
-### Device Pairing
-- QR code generation and scanning via qrcode.react
+### Device Pairing & QR
+- **QRCode.js**: QR code generation for device pairing
+- **Network IP Detection**: Automatic network IP detection for cross-device connectivity
 
-### Deployment
-- GitHub Pages or Vercel (optional)
+### Development Tools
+- **ESLint**: Code quality and consistency enforcement
+- **TypeScript**: Static type checking and IDE support
 
 ## Core Features Implementation
 
 ### 1. Gesture Detection System
-**File**: `src/components/GestureDetector.jsx`
+**File**: `src/components/GestureDetector.tsx`
 
 **Key Functions**:
-- Access webcam via getUserMedia()
-- Load MediaPipe handpose model
-- Real-time hand landmark detection
-- Gesture classification using Fingerpose:
-  - Open palm = "ready" state
-  - Closed fist = "grab" state  
-  - Open after grab = "release" state
-- Hand position tracking between frames
-- Gesture sequence detection: [open → fist → open + movement] = "send"
+- **Webcam Initialization**: Access webcam via getUserMedia() API with proper permission handling
+- **MediaPipe Model Loading**: Load @mediapipe/tasks-vision HandLandmarker with optimized settings
+- **Real-time Hand Tracking**: Continuous hand landmark detection at 30+ FPS
+- **Gesture Classification**: Advanced gesture recognition with high accuracy:
+  - **Peace Sign (✌️)**: Open/close file menu and display QR code
+  - **Fist (✊)**: Select files and trigger file menu
+  - **Thumbs Up (👍)**: Send selected files to connected device
+- **Performance Optimization**: Reduced video resolution (640x480) for better performance
+- **Error Handling**: Comprehensive error recovery for camera and model failures
+- **Visual Feedback**: Real-time gesture visualization and confidence indicators
 
-### 2. Peer-to-Peer Connection
-**File**: `src/utils/connection.js`
+### 2. Desktop Interface
+**File**: `src/components/DesktopView.tsx`
 
 **Key Functions**:
-- `createConnection()` - Initialize PeerJS instance and generate Peer ID
-- `connectToPeer(peerId)` - Establish connection to another device
-- `sendFile(peerConnection, file)` - Transfer file via WebRTC
-- `listenForFile(peer, callback)` - Handle incoming file transfers
+- **Webcam Display**: Live video feed with overlay UI elements
+- **Gesture Status Display**: Real-time gesture detection feedback
+- **Connection Management**: PeerJS instance creation and management
+- **QR Modal Integration**: Automatic display for device pairing
+- **File Transfer**: Handle file selection and sending via gestures
+- **Device Override Controls**: Manual desktop/mobile view switching
 
-### 3. QR Code Pairing
-**File**: `src/components/QRDisplay.jsx`
+### 3. Mobile Interface
+**File**: `src/components/MobileView.tsx`
 
-**Functionality**:
-- Desktop generates unique Peer ID
-- Display QR code encoding Peer ID
-- Mobile device scans QR or manually enters ID
-- Automatic connection establishment via PeerJS
+**Key Functions**:
+- **QR Scanner**: Built-in camera-based QR code scanning
+- **Manual ID Input**: Alternative connection method via peer ID entry
+- **Connection Status**: Real-time connection state visualization
+- **File Reception**: Preview and management of received files
+- **Download Management**: Automatic file download on mobile devices
 
-### 4. Application Logic Integration
-**File**: `src/App.jsx`
+### 4. QR Code Display
+**File**: `src/components/QRDisplay.tsx`
 
-**State Management**:
-- Device role (desktop/mobile mode)
-- Connection status
-- File selection and transfer state
-- Gesture detection status
+**Key Functions**:
+- **Dynamic QR Generation**: Real-time QR code creation with current peer ID
+- **Modern UI Design**: Clean, white-themed modal with rounded corners
+- **Auto-close Functionality**: Automatic modal closure upon successful connection
+- **Mobile Responsiveness**: Optimized display for both desktop and mobile viewing
 
-**Desktop Flow**:
-1. Generate Peer ID and display QR code
-2. Listen for incoming connections
-3. Monitor gesture detection
-4. Trigger file send on "send" gesture
-5. Handle file selection interface
+### 5. File Selection
+**File**: `src/components/FileSelector.tsx`
 
-**Mobile Flow**:
-1. Scan QR or input Peer ID
-2. Connect to desktop device
-3. Display connection status
-4. Receive and preview incoming files
-5. Handle file download/display options
+**Key Functions**:
+- **File Picker**: Intuitive file selection interface
+- **File Validation**: Type checking and size limit enforcement
+- **Preview Generation**: Thumbnail creation for image files
+- **Gesture Integration**: Gesture-controlled file selection
 
-### 5. Receiver Interface
-**File**: `src/components/ReceiverView.jsx`
+### 6. Application State Management
+**File**: `src/App.tsx`
 
-**Features**:
-- Connection status indicator
-- File receiving progress
-- Image preview and display
-- Download/save options
+**Key Functions**:
+- **Device Detection Logic**: Automatic desktop/mobile mode selection
+- **Connection State**: PeerJS connection status and peer ID management
+- **Gesture State**: Current gesture detection and confidence levels
+- **UI State**: Modal visibility and view switching controls
+- **Error State**: Global error handling and user notifications
 
-## Gesture Logic Implementation
+## Gesture Recognition Implementation
 
-### Hand Tracking Flow
-1. Initialize MediaPipe Hands model
-2. Capture video frames from webcam
-3. Extract hand landmarks from each frame
-4. Apply Fingerpose gesture classification
+### Gesture Detection Flow
+1. Initialize MediaPipe HandLandmarker with optimized settings
+2. Capture video frames from webcam at 640x480 resolution
+3. Extract 21 hand landmarks from each detected hand
+4. Apply custom gesture recognition algorithms
+5. Calculate confidence scores for each gesture
+6. Trigger appropriate actions based on detected gestures
 
-### Gesture Recognition Pattern
-```
-if (previousGesture === 'OPEN_HAND' && currentGesture === 'FIST') {
-    setGrabStart(position)
-}
-if (previousGesture === 'FIST' && currentGesture === 'OPEN_HAND') {
-    if (handMovedForward()) {
-        triggerGesture("send")
-    }
-}
-```
-
-### Gesture Definitions
-- **OPEN_HAND**: All fingers extended
-- **FIST**: All fingers folded
-- **MOVEMENT**: Detect forward hand motion between grab and release
+### Supported Gestures
+- **Peace Sign**: Shows QR modal for device pairing
+- **Fist**: Opens file selector menu
+- **Thumbs Up**: Sends selected files to connected device
 
 ## File Transfer Workflow
 
-### Sending Process (Desktop)
-1. User selects photo file
-2. Desktop detects "send" gesture sequence
-3. PeerJS connection sends file to connected mobile device
-4. Display transfer confirmation
+### Desktop to Mobile Transfer
+1. Desktop detects peace gesture → displays QR modal
+2. Mobile scans QR or enters peer ID
+3. WebRTC connection established between devices
+4. Desktop detects fist → shows file selector
+5. User selects files via interface
+6. Desktop detects thumbs up → sends files
+7. Mobile receives files with progress tracking
+8. Files automatically saved to mobile device
 
-### Receiving Process (Mobile)
-1. Mobile device establishes connection
-2. Listens for incoming file transfers
-3. Displays received image preview
-4. Offers download/save options
+## Performance & Security
 
-## User Interface Design
+### Optimization
+- **Reduced Resolution**: 640x480 video for better performance
+- **Model Optimization**: Efficient MediaPipe configuration
+- **Memory Management**: Proper cleanup and garbage collection
+- **Connection Reuse**: Reuse WebRTC connections for multiple transfers
 
-### Desktop View
-- **Video Feed**: Live webcam with gesture detection overlay
-- **Status Display**: Current gesture state ("open / fist / release")
-- **QR Code**: Peer ID for mobile pairing
-- **File Upload**: Optional drag-and-drop zone for file selection
-- **Connection Status**: Show when mobile device is connected
+### Security Features
+- **End-to-End Encryption**: All transfers encrypted via WebRTC
+- **No Server Storage**: Files never stored on intermediate servers
+- **Temporary Peer IDs**: Auto-generated disposable connection identifiers
+- **Local Processing**: All gesture processing happens client-side
 
-### Mobile View
-- **Connection Screen**: QR scanner or manual ID input
-- **Waiting State**: "Waiting for file..." message
-- **Image Preview**: Display received photos
-- **Action Buttons**: Download, save, or dismiss options
+---
 
-## Development Dependencies
-
-### Core Libraries
-- `@tensorflow/tfjs` - TensorFlow.js for machine learning
-- `@tensorflow-models/hand-pose-detection` - Hand pose detection model
-- `@mediapipe/hands` - MediaPipe hand tracking
-- `fingerpose` - Gesture recognition library
-- `peerjs` - WebRTC peer-to-peer connections
-- `qrcode.react` - QR code generation
-
-### Development Tools
-- `tailwindcss` - Utility-first CSS framework
-- ESLint configuration for code quality
-- TypeScript support for type safety
-
-## Security & Performance Considerations
-
-### Security
-- WebRTC encryption for file transfers
-- Temporary Peer ID generation for privacy
-- No server-side file storage
-
-### Performance
-- Browser-based processing only
-- Optimized hand detection with MediaPipe
-- Efficient file chunking for large transfers
-
-## Testing Strategy
-
-### Unit Testing
-- Gesture detection accuracy
-- File transfer reliability
-- QR code generation/scanning
-
-### Integration Testing
-- Desktop-to-mobile connection flow
-- Gesture-triggered file sending
-- Cross-device compatibility
-
-### User Testing
-- Gesture recognition accuracy
-- File transfer success rate
-- User interface intuitiveness
-
-## Future Enhancement Opportunities
-
-### Advanced Features
-- Multiple gesture support (different gestures for different actions)
-- Multiple file selection support
-- File transfer history
-- Offline mode with local storage
-
-### Platform Expansion
-- Native mobile app development
-- Desktop application wrapper
-- Browser extension integration
-
-## Success Metrics
-
-### Technical Performance
-- Gesture detection accuracy > 90%
-- File transfer success rate > 95%
-- Connection establishment time < 5 seconds
-
-### User Experience
-- Intuitive gesture recognition
-- Seamless file transfer process
-- Responsive cross-device experience
+*This plan provides a comprehensive roadmap for the Gesture Share project, covering the actual project structure and implementation details based on the existing codebase.*

@@ -1,101 +1,151 @@
-# Gesture Share - AI-Powered Parallel Development
+# Gesture Share - Development Guide
 
-A revolutionary gesture-sharing platform built with parallel subagent development using Goose AI agents.
+A revolutionary gesture-based file sharing platform with modern development workflow.
 
 ## 🚀 Quick Start
 
 ```bash
-# Run the main development pipeline
-goose run recipes/main-development-pipeline.yaml
-
-# Install dependencies after development is complete
+# Install Node.js using fnm (Fast Node Manager)
 fnm use && npm install
+
+# Start development server
+npm run dev
 ```
 
-## 🤖 Parallel Development Architecture
+## 🔧 Development Environment Setup
 
-### Main Development Pipeline
-- **Single Click Execution**: Run `main-development-pipeline.yaml` to launch all subagents simultaneously
-- **No Communication Overhead**: Each agent works independently without inter-agent messaging
-- **Automatic Commits**: Every agent commits after completing each feature/component
-- **Agent Tracking**: Progress tracked in `agent.md` with minimal line updates
+### Node.js Management with fnm
+- **fnm**: Fast Node Manager for version management
+- **No hermit**: Use fnm instead of hermit for Node.js
+- **Version Pinning**: Projects use specific Node versions
+- **Automatic Switching**: fnm automatically switches to project Node version
 
-### Active Subagents
-- **Frontend Agent**: React + TypeScript UI, gesture capture, visual feedback
-- **QA Agent**: Automated testing, gesture validation, cross-device testing  
-- **DevOps Agent**: CI/CD, deployment automation, environment setup
+### Keyboard Rules
+- **Minimal Keyboard Usage**: Development primarily through voice and gestures
+- **Essential Keyboard Shortcuts**: Only for development tool interactions
+- **Voice Commands**: Primary method for development tasks
+- **Gesture-Based**: Testing and user interaction without keyboard
+
+### Mise Configuration
+```toml
+# .mise.toml
+[tools]
+node = "20"
+typescript = "5"
+"pnpm" = "latest"
+
+[env]
+NODE_ENV = "development"
+```
+
+## 🤖 Development Workflow
+
+### Local Development
+1. **Environment Setup**: `fnm use` to activate correct Node version
+2. **Install Dependencies**: `npm install` for project dependencies
+3. **Start Development**: `npm run dev` for hot reload development
+4. **Gesture Testing**: Use hand gestures for application testing
+5. **Voice Commands**: Voice-activated development tasks
+
+### Voice-Activated Development
+- **Code Generation**: Voice commands for component creation
+- **Test Execution**: Voice-triggered test suites
+- **Build Process**: Voice-activated build and deployment
+- **Debug Mode**: Voice-controlled debugging tools
+
+### Development Tools
+- **VS Code**: Code editor with voice command extensions
+- **Chrome DevTools**: Browser debugging with keyboard shortcuts
+- **Terminal**: Essential keyboard-only tool for system operations
+- **Git**: Version control with voice and keyboard hybrid
 
 ## 📁 Project Structure
 
 ```
 gesture-share/
-├── recipes/
-│   ├── main-development-pipeline.recipe    # Run this to start all agents
-│   ├── subagents/
-│   │   ├── frontend-agent.recipe           # UI development
-│   │   ├── qa-agent.recipe                 # Testing automation
-│   │   └── devops-agent.recipe             # Deployment & infrastructure
-│   └── tasks/
-│       └── feature-queue.json              # Feature definitions
-├── agent.md                                # Progress tracking (minimal)
-├── src/                                    # Source code
-└── package.json                            # Dependencies
-```
-
-## 🎯 Core Features
-
-- **Gesture Recognition**: AI-powered gesture capture and validation
-- **Real-time Sharing**: Instant gesture sharing across devices
-- **Multi-modal Input**: Support for voice, gestures, and sensor inputs
-- **Zero Keyboard Interaction**: Fully controlled through gestures and voice
-
-## 🔧 Development Workflow
-
-1. **Start Development**: `goose run recipes/main-development-pipeline.yaml`
-2. **All Agents Launch**: Frontend, QA, and DevOps start immediately
-3. **Parallel Development**: Each agent works on their domain independently
-4. **Automatic Commits**: Git commits happen after each feature completion
-5. **Progress Tracking**: Check `agent.md` for real-time status updates
-
-## 📊 Agent Tracking (agent.md)
-
-Minimal progress tracking with concise status updates:
-```
-✅ Frontend: Gesture capture UI (3 files, 245 lines)
-✅ QA: Gesture validation tests (12 tests passing)
-🔄 DevOps: CI/CD pipeline setup (in progress)
+├── src/
+│   ├── components/          # React components
+│   ├── types/              # TypeScript definitions
+│   └── main.tsx           # Application entry
+├── recipes/               # Development workflows
+├── agent.md               # Progress tracking
+├── plan.md               # Project roadmap
+└── package.json          # Dependencies and scripts
 ```
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 19, TypeScript, Vite
-- **AI Agents**: Goose subagent system
-- **Version Control**: Git with automatic commits
-- **Node.js**: Managed via fnm
-- **Testing**: Automated testing suite
+### Frontend Framework
+- **React 19**: Modern React with concurrent features
+- **TypeScript**: Type-safe development
+- **Vite**: Fast build tool with HMR
+- **TailwindCSS**: Utility-first CSS framework
 
-## 🎮 Input Methods
+### AI & Gesture Detection
+- **@mediapipe/tasks-vision**: MediaPipe vision API
+- **TensorFlow.js**: ML inference in browser
+- **Hand Landmarker**: Precise hand tracking
 
-- **Gestures**: Primary interaction method
-- **Voice Commands**: Voice-controlled development and user interaction
-- **Sensors**: Device sensor integration for enhanced gesture detection
-- **No Keyboard Required**: Entire development and user workflow without traditional input
+### Development Tools
+- **fnm**: Fast Node Manager (preferred over hermit)
+- **ESLint**: Code quality enforcement
+- **TypeScript**: Static type checking
+- **Voice Commands**: Development task automation
 
-## 🚀 Deployment
+## 🎮 Input Methods & Accessibility
 
-Agents handle deployment automatically:
-- **DevOps Agent**: Sets up CI/CD pipeline
+### Development Input
+- **Primary**: Voice commands for most development tasks
+- **Secondary**: Minimal keyboard shortcuts for essential tools
+- **Tertiary**: Gesture-based testing and validation
+- **Fallback**: Keyboard-only when voice/gesture unavailable
+
+### Application Input
+- **Primary**: Hand gestures for file sharing
+- **Secondary**: Touch interface for mobile
+- **Tertiary**: Voice commands for accessibility
+- **Fallback**: Keyboard navigation for accessibility
+
+## 🚀 Build & Deployment
+
+### Development Commands
+```bash
+# Install with fnm
+fnm use && npm install
+
+# Development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run tests
+npm run test
+
+# Type checking
+npm run type-check
+```
+
+### Deployment Automation
+- **GitHub Actions**: Automated CI/CD pipeline
+- **Docker**: Containerized deployment
+- **Nginx**: Production web server
 - **Environment Management**: Development, staging, production
-- **Monitoring**: Automated health checks and performance monitoring
 
-## 📈 Agent Performance
+## 📊 Development Metrics
 
-Each subagent operates independently:
-- **No Communication Delays**: Eliminates inter-agent messaging overhead
-- **Direct Git Integration**: Each agent commits their work independently
-- **Focused Expertise**: Each agent specializes in their domain
-- **Scalable Architecture**: Easy to add more specialized agents
+### Code Quality
+- **TypeScript**: 100% type coverage
+- **ESLint**: Zero linting errors
+- **Test Coverage**: >90% for critical components
+- **Performance**: <2s initial load time
+
+### Accessibility Standards
+- **WCAG 2.1**: AA compliance for accessibility
+- **Keyboard Navigation**: Full keyboard support
+- **Screen Reader**: ARIA labels and announcements
+- **Voice Control**: Voice command integration
 
 ---
 
-**Built with Goose AI Agents - No keyboard required for development or usage**
+**Built with modern development practices - minimal keyboard usage required**
