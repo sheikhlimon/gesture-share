@@ -23,7 +23,7 @@ const GestureTips: React.FC<GestureTipsProps> = ({
 
   if (shouldShowTip) {
     return (
-      <div className="absolute top-4 right-4 z-20 animate-in slide-in-from-top-2 duration-300">
+      <div className="absolute bottom-4 left-4 z-20 animate-in slide-in-from-bottom-2 duration-300">
         <div className="bg-white/95 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 max-w-xs">
           <span className="text-lg">✋</span>
           <span className="text-sm text-gray-700">
