@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { DesktopView } from "./components/DesktopView";
 import { MobileView } from "./components/MobileView";
 
