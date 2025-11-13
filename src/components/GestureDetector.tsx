@@ -619,12 +619,13 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      // Cleanup when component unmounts
-      const currentVideo = videoRef.current;
-      if (currentVideo?.srcObject) {
-        const currentStream = currentVideo.srcObject as MediaStream;
+      // Cleanup when component unmounts - capture ref value at cleanup time
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const videoElement = videoRef.current;
+      if (videoElement?.srcObject) {
+        const currentStream = videoElement.srcObject as MediaStream;
         currentStream.getTracks().forEach((track) => track.stop());
-        currentVideo.srcObject = null;
+        videoElement.srcObject = null;
       }
     };
   }, []); // Empty dependency array - effect handles its own ref checking
