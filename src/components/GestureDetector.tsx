@@ -44,10 +44,8 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
     // Thumb detection - more lenient criteria for better detection
     const thumbTip = landmarks[fingerTips[0]];
-    const thumbMcp = landmarks[fingerMcp[0]];
     const thumbIp = landmarks[fingerPip[0]];
     const indexTip = landmarks[fingerTips[1]];
-    const middleTip = landmarks[fingerTips[2]];
 
     // Thumb is extended if tip is above IP joint (reduced threshold)
     const thumbUp = thumbTip.y < thumbIp.y - 0.02;
@@ -313,7 +311,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               gestureCountRef.current.set(gesture, currentCount + 1);
 
               // Reset other gesture counts that haven't been seen recently
-              for (const [key, count] of gestureCountRef.current.entries()) {
+              for (const [key] of gestureCountRef.current.entries()) {
                 if (key !== gesture && !gestureHistoryRef.current.slice(-4).includes(key)) {
                   gestureCountRef.current.delete(key);
                 }

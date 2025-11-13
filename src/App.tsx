@@ -1,10 +1,16 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { DesktopView } from "./components/DesktopView";
 import { MobileView } from "./components/MobileView";
 
 function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [initializationProgress, setInitializationProgress] = useState({
+    camera: false,
+    handDetection: false,
+    deviceDetection: false
+  });
+  const initializationTimeoutRef = useRef<number | null>(null);
 
   const handleFileSelect = useCallback((file: File) => {
     console.log("File selected for sharing:", file.name);
@@ -28,17 +34,107 @@ function App() {
       window.innerWidth,
     );
     setIsMobile(isMobileDevice);
+    setInitializationProgress(prev => ({ ...prev, deviceDetection: true }));
+  }, []);
+
+  const initializeCameraAndDetection = useCallback(async () => {
+    try {
+      console.log("=== Pre-initializing camera and hand detection ===");
+      
+      // Actually request camera access to pre-warm it
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+            facingMode: "user",
+            frameRate: { ideal: 30, max: 60 },
+          },
+          audio: false,
+        });
+        
+        // Stop the stream immediately to free it for the actual component
+        stream.getTracks().forEach(track => track.stop());
+        console.log("Camera access pre-warmed successfully");
+        setInitializationProgress(prev => ({ ...prev, camera: true }));
+      } catch (cameraError) {
+        console.warn("Camera pre-warm failed, but continuing:", cameraError);
+        // Still mark as complete to allow app to continue
+        setInitializationProgress(prev => ({ ...prev, camera: true }));
+      }
+      
+      // Pre-load MediaPipe models
+      try {
+        const { FilesetResolver, HandLandmarker } = await import("@mediapipe/tasks-vision");
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+        );
+        
+        // Pre-load hand landmarker model
+        await HandLandmarker.createFromOptions(vision, {
+          baseOptions: {
+            delegate: "GPU",
+            modelAssetPath:
+              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          },
+          runningMode: "VIDEO",
+          numHands: 1,
+        });
+        
+        console.log("Hand detection model pre-loaded successfully");
+        setInitializationProgress(prev => ({ ...prev, handDetection: true }));
+      } catch (modelError) {
+        console.warn("Hand detection model pre-load failed, but continuing:", modelError);
+        // Still mark as complete to allow app to continue
+        setInitializationProgress(prev => ({ ...prev, handDetection: true }));
+      }
+      
+      console.log("=== Camera and hand detection pre-initialization complete ===");
+      
+    } catch (error) {
+      console.error("Failed to pre-initialize camera/hand detection:", error);
+      // Still mark as complete to allow app to continue
+      setInitializationProgress(prev => ({ ...prev, camera: true, handDetection: true }));
+    }
   }, []);
 
   useEffect(() => {
-    // Simulate app initialization
-    const timer = setTimeout(() => {
+    // Start initialization immediately - run only once on mount
+    let isMounted = true;
+    
+    const startInitialization = async () => {
+      if (!isMounted) return;
+      
       detectDevice();
-      setIsLoading(false);
-    }, 1500); // 1.5 second loading time
+      await initializeCameraAndDetection();
+    };
 
-    return () => clearTimeout(timer);
-  }, [detectDevice]);
+    startInitialization();
+
+    // Set a timeout to hide loading screen after max 3 seconds
+    const maxTimeout = setTimeout(() => {
+      if (isMounted) {
+        console.log("=== Loading timeout reached, proceeding to app ===");
+        setIsLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current);
+      }
+      clearTimeout(maxTimeout);
+    };
+  }, []); // Empty dependency array - run only once
+
+  // Separate effect to check initialization progress
+  useEffect(() => {
+    if (Object.values(initializationProgress).every(Boolean)) {
+      console.log("=== All components initialized ===");
+      setIsLoading(false);
+    }
+  }, [initializationProgress]);
 
   // Loading screen
   if (isLoading) {
@@ -76,9 +172,23 @@ function App() {
             ></div>
           </div>
 
-          {/* Loading progress hint */}
+          {/* Loading progress */}
           <div className="mt-8 text-sm text-gray-500">
-            <p>Allow camera access when prompted</p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${initializationProgress.deviceDetection ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                <span>Device detection</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${initializationProgress.camera ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                <span>Camera access</span>
+              </div>
+              <div className="flex items-center justify-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${initializationProgress.handDetection ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                <span>Hand detection model</span>
+              </div>
+            </div>
+            <p className="mt-4 text-xs text-gray-600">Allow camera access when prompted</p>
           </div>
         </div>
       </div>

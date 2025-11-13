@@ -188,11 +188,18 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     }
   }, [connections.size]);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [showFilePickerButton, setShowFilePickerButton] = useState(false);
+  const [countdown, setCountdown] = useState(10);
+  const countdownIntervalRef = useRef<number | null>(null);
 
   const openFilePickerDirectly = useCallback(() => {
     console.log("=== Opening file picker directly ===");
+    
+    // Clear countdown when file picker is opened
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
     
     // Create and trigger file input immediately (user activated)
     const fileInput = document.createElement('input');
@@ -212,12 +219,14 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       }
       document.body.removeChild(fileInput);
       setShowFilePickerButton(false);
+      setCountdown(10);
     };
 
     fileInput.oncancel = () => {
       console.log("File picker cancelled");
       document.body.removeChild(fileInput);
       setShowFilePickerButton(false);
+      setCountdown(10);
     };
 
     document.body.appendChild(fileInput);
@@ -230,11 +239,32 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     console.log("=== Triggering file picker flow ===");
     // Show the button overlay for user to click
     setShowFilePickerButton(true);
+    setCountdown(10);
     
-    // Auto-hide after 10 seconds if not clicked
-    setTimeout(() => {
-      setShowFilePickerButton(false);
-    }, 10000);
+    // Start countdown timer
+    countdownIntervalRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          // Clear interval when countdown reaches 0
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setShowFilePickerButton(false);
+          return 10;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, []);
+
+  // Cleanup countdown interval on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
+    };
   }, []);
 
   const sendFile = useCallback(
@@ -405,7 +435,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 Select File to Share
               </button>
               <p className="text-xs text-gray-500 mt-3">
-                This button will disappear in 10 seconds
+                This button will disappear in {countdown} seconds
               </p>
             </div>
           </div>
