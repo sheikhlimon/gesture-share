@@ -9,11 +9,10 @@ A desktop application that enables seamless file sharing between your computer a
 - **Real-time Hand Detection**: Uses MediaPipe for accurate gesture recognition
 - **QR Code Connections**: Easy mobile device pairing via QR codes
 - **Multiple Gesture Controls**:
-  - ✌️ **Peace Sign**: Show QR code for mobile connection
+  - ☝️ **Point Up**: Show QR code for mobile connection
   - ✊ **Fist**: Open file selector to choose files
-  - 👍 **Thumbs Up**: Send selected file to connected device
-  - ☝️ **Point**: Navigate through file selection
-  - ✋ **Open Hand**: Reset/ready state
+  - 👌 **OK Sign**: Send selected file to connected device
+  - ✋ **Open Hand**: Default/ready state
 
 ## Quick Start
 
@@ -49,11 +48,11 @@ A desktop application that enables seamless file sharing between your computer a
 ### Usage
 
 1. **Launch the app** and allow camera permissions
-2. **Make a Peace Sign (✌️)** to display the QR code
+2. **Point Up (☝️)** to display the QR code for mobile connection
 3. **Scan the QR code** with your mobile device to connect
 4. **Make a Fist (✊)** to open the file selector
-5. **Select a file** using your mouse or Point gesture (☝️)
-6. **Give a Thumbs Up (👍)** to send the file to your mobile device
+5. **Select a file** from the file browser
+6. **Make an OK Sign (👌)** to send the file to your mobile device
 
 ## Project Structure
 

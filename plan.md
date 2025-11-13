@@ -57,9 +57,10 @@ public/
 - **MediaPipe Model Loading**: Load @mediapipe/tasks-vision HandLandmarker with optimized settings
 - **Real-time Hand Tracking**: Continuous hand landmark detection at 30+ FPS
 - **Gesture Classification**: Advanced gesture recognition with high accuracy:
-  - **Peace Sign (✌️)**: Open/close file menu and display QR code
-  - **Fist (✊)**: Select files and trigger file menu
-  - **Thumbs Up (👍)**: Send selected files to connected device
+  - **Point Up (☝️)**: Display QR code for device pairing
+  - **Fist (✊)**: Open file selector menu
+  - **OK Sign (👌)**: Send selected files to connected device
+  - **Open Hand (✋)**: Default/ready state
 - **Performance Optimization**: Reduced video resolution (640x480) for better performance
 - **Error Handling**: Comprehensive error recovery for camera and model failures
 - **Visual Feedback**: Real-time gesture visualization and confidence indicators
@@ -124,19 +125,20 @@ public/
 6. Trigger appropriate actions based on detected gestures
 
 ### Supported Gestures
-- **Peace Sign**: Shows QR modal for device pairing
-- **Fist**: Opens file selector menu
-- **Thumbs Up**: Sends selected files to connected device
+- **Point Up (☝️)**: Shows QR modal for device pairing
+- **Fist (✊)**: Opens file selector menu
+- **OK Sign (👌)**: Sends selected files to connected device
+- **Open Hand (✋)**: Default/ready state
 
 ## File Transfer Workflow
 
 ### Desktop to Mobile Transfer
-1. Desktop detects peace gesture → displays QR modal
+1. Desktop detects Point Up gesture → displays QR modal
 2. Mobile scans QR or enters peer ID
 3. WebRTC connection established between devices
-4. Desktop detects fist → shows file selector
+4. Desktop detects Fist → shows file selector
 5. User selects files via interface
-6. Desktop detects thumbs up → sends files
+6. Desktop detects OK Sign → sends files
 7. Mobile receives files with progress tracking
 8. Files automatically saved to mobile device
 

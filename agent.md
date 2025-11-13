@@ -1,6 +1,6 @@
 # Development Environment Rules & Progress
 
-**Last Updated**: 2025-11-12 18:30:00
+**Last Updated**: 2025-11-13 11:50:00
 
 ## 🔧 Development Environment Rules
 
@@ -90,9 +90,10 @@
 - **Edge**: ✅ Full support with Chromium engine
 
 ### Supported Gestures
-- **Peace Sign (✌️)**: Display QR code for device pairing
+- **Point Up (☝️)**: Display QR code for device pairing
 - **Fist (✊)**: Open file selector menu
-- **Thumbs Up (👍)**: Send selected files to connected device
+- **OK Sign (👌)**: Send selected files to connected device
+- **Open Hand (✋)**: Default/ready state
 
 ---
 

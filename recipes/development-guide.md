@@ -82,9 +82,10 @@ gesture-share/
 - **TailwindCSS**: Utility-first CSS framework
 
 ### AI & Gesture Detection
-- **@mediapipe/tasks-vision**: MediaPipe vision API
-- **TensorFlow.js**: ML inference in browser
-- **Hand Landmarker**: Precise hand tracking
+- **@mediapipe/tasks-vision**: MediaPipe vision API for hand tracking
+- **Enhanced Gesture Recognition**: Point Up, Fist, OK Sign detection
+- **Real-time Hand Tracking**: PIP joint-based finger detection
+- **Gesture Flow Control**: QR display, file selection, and sending
 
 ### Development Tools
 - **fnm**: Fast Node Manager (preferred over hermit)
