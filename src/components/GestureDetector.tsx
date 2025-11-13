@@ -18,9 +18,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentGesture, setCurrentGesture] = useState<string>("none");
   const previousGestureRef = useRef<string>("none");
-  const grabStartRef = useRef<{ x: number; y: number } | null>(null);
   const lastProcessTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
 
@@ -36,15 +34,23 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     let extendedFingers = 0;
     const fingerStates: boolean[] = [];
 
-    // Thumb (horizontal check)
-    const thumbExtended =
-      landmarks[fingerTips[0]].x > landmarks[fingerMcp[0]].x;
-    fingerStates.push(thumbExtended);
-    if (thumbExtended) extendedFingers++;
+    // Thumb detection (upward or outward)
+    const thumbTip = landmarks[fingerTips[0]];
+    const thumbMcp = landmarks[fingerMcp[0]];
 
-    // Other fingers (vertical check)
+    const thumbUp =
+      thumbTip.y < thumbMcp.y - 0.02 ||
+      Math.abs(thumbTip.x - thumbMcp.x) > 0.06;
+
+    fingerStates.push(thumbUp);
+    if (thumbUp) extendedFingers++;
+
+    // Other fingers detection (must be significantly extended)
     for (let i = 1; i < 5; i++) {
-      const isExtended = landmarks[fingerMcp[i]].y > landmarks[fingerTips[i]].y;
+      const tip = landmarks[fingerTips[i]];
+      const mcp = landmarks[fingerMcp[i]];
+
+      const isExtended = tip.y < mcp.y - 0.08;
       fingerStates.push(isExtended);
       if (isExtended) extendedFingers++;
     }
@@ -52,30 +58,35 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     // Gesture recognition
     if (extendedFingers === 5) return "OPEN_HAND";
     if (extendedFingers === 0) return "FIST";
+
     if (
       fingerStates[1] &&
       fingerStates[2] &&
       !fingerStates[3] &&
-      !fingerStates[4] &&
-      !fingerStates[0]
-    )
+      !fingerStates[4]
+    ) {
       return "PEACE";
+    }
+
     if (
       fingerStates[0] &&
       !fingerStates[1] &&
       !fingerStates[2] &&
       !fingerStates[3] &&
       !fingerStates[4]
-    )
+    ) {
       return "THUMBS_UP";
+    }
+
     if (
       !fingerStates[0] &&
       fingerStates[1] &&
       !fingerStates[2] &&
       !fingerStates[3] &&
       !fingerStates[4]
-    )
+    ) {
       return "POINT";
+    }
 
     return "PARTIAL";
   };
@@ -97,39 +108,87 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       return;
     }
 
-    // Only initialize if not already initialized
-    if (handLandmarkerRef.current || streamRef.current) return;
+    // Clean up any existing resources before re-initializing
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    handLandmarkerRef.current = null;
 
     const initializeDetection = async () => {
       try {
-        // Get camera stream first
+        // Get camera stream with desktop-optimized constraints
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
+          video: {
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+            facingMode: "user",
+            frameRate: { ideal: 30, max: 60 },
+          },
           audio: false,
         });
+
         streamRef.current = stream;
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
+        // Set up video with retry mechanism
+        const setupVideo = () => {
+          if (videoRef.current) {
+            const video = videoRef.current;
+            video.srcObject = stream;
+
+            const attemptPlay = () => {
+              if (video.srcObject === stream && stream.active) {
+                video.play().catch(() => {
+                  // Silent retry on autoplay restrictions
+                });
+              }
+            };
+
+            attemptPlay();
+            video.onloadedmetadata = attemptPlay;
+
+            // Minimal keep-alive mechanism
+            const keepVideoAlive = setInterval(() => {
+              if (video.paused && stream.active) {
+                attemptPlay();
+              }
+            }, 2000);
+
+            // Store for cleanup
+            video.dataset.keepAliveId = keepVideoAlive.toString();
+          } else {
+            setTimeout(setupVideo, 100);
+          }
+        };
+
+        setupVideo();
 
         // Initialize HandLandmarker with tasks-vision
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
         );
-        handLandmarkerRef.current = await HandLandmarker.createFromOptions(
-          vision,
-          {
-            baseOptions: {
-              delegate: "GPU",
-              modelAssetPath:
-                "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+
+        try {
+          handLandmarkerRef.current = await HandLandmarker.createFromOptions(
+            vision,
+            {
+              baseOptions: {
+                delegate: "GPU",
+                modelAssetPath:
+                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+              },
+              runningMode: "VIDEO",
+              numHands: 1,
             },
-            runningMode: "VIDEO",
-            numHands: 1,
-          },
-        );
+          );
+        } catch (mpError) {
+          console.error("HandLandmarker creation failed:", mpError);
+          throw mpError;
+        }
 
         setIsLoading(false);
 
@@ -144,63 +203,46 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
           lastProcessTimeRef.current = now;
 
           try {
-            if (
-              handLandmarkerRef.current &&
-              videoRef.current &&
-              !videoRef.current.paused
-            ) {
-              const results = await handLandmarkerRef.current.detectForVideo(
-                videoRef.current,
-                performance.now(),
-              );
+            // Check all conditions before processing
+            if (!handLandmarkerRef.current) {
+              animationFrameRef.current = requestAnimationFrame(processFrame);
+              return;
+            }
 
-              if (!results.landmarks?.length) {
-                if (previousGestureRef.current !== "none") {
-                  setCurrentGesture("none");
-                  previousGestureRef.current = "none";
-                  onGestureDetected?.("none", { x: 0, y: 0 });
-                }
-              } else {
-                const landmarks = results.landmarks[0];
-                const gesture = classifyGesture(landmarks);
-                const position = { x: landmarks[0].x, y: landmarks[0].y };
+            if (!videoRef.current) {
+              animationFrameRef.current = requestAnimationFrame(processFrame);
+              return;
+            }
 
-                if (gesture !== previousGestureRef.current) {
-                  setCurrentGesture(gesture);
-                  onGestureDetected?.(gesture, position);
-                }
+            if (videoRef.current.paused || videoRef.current.readyState < 2) {
+              animationFrameRef.current = requestAnimationFrame(processFrame);
+              return;
+            }
 
-                // Handle grab and send gesture
-                if (
-                  previousGestureRef.current === "OPEN_HAND" &&
-                  gesture === "FIST"
-                ) {
-                  grabStartRef.current = position;
-                }
+            const results = await handLandmarkerRef.current.detectForVideo(
+              videoRef.current,
+              performance.now(),
+            );
 
-                if (
-                  previousGestureRef.current === "FIST" &&
-                  gesture === "OPEN_HAND" &&
-                  grabStartRef.current
-                ) {
-                  const distance = Math.sqrt(
-                    Math.pow(position.x - grabStartRef.current.x, 2) +
-                      Math.pow(position.y - grabStartRef.current.y, 2),
-                  );
-
-                  if (distance > 0.05) {
-                    onGestureDetected?.("send", position);
-                    grabStartRef.current = null;
-                  }
-                }
-
-                previousGestureRef.current = gesture;
+            if (!results.landmarks?.length) {
+              if (previousGestureRef.current !== "none") {
+                previousGestureRef.current = "none";
+                onGestureDetected?.("none", { x: 0, y: 0 });
               }
+            } else {
+              const landmarks = results.landmarks[0];
+              const gesture = classifyGesture(landmarks);
+              const position = { x: landmarks[0].x, y: landmarks[0].y };
+
+              if (gesture !== previousGestureRef.current) {
+                onGestureDetected?.(gesture, position);
+              }
+
+              previousGestureRef.current = gesture;
             }
           } catch (error) {
             console.error("MediaPipe processing error:", error);
-            // Stop processing on error to prevent spam
-            return;
+            // Continue processing even on error
           }
 
           animationFrameRef.current = requestAnimationFrame(processFrame);
@@ -233,40 +275,38 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     };
   }, [isDetecting, onGestureDetected]);
 
+  // Video setup for gesture detection - moved to stream initialization
+
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-600 text-sm">{error}</p>
+      <div className="bg-red-900 border border-red-700 rounded-lg p-4">
+        <p className="text-red-300 text-sm">{error}</p>
+        <p className="text-red-400 text-xs mt-2">
+          Please allow camera access and refresh the page
+        </p>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <p className="text-gray-600 text-sm">Initializing hand detection...</p>
+      <div className="bg-gray-800 border border-gray-700 rounded-lg p-4">
+        <p className="text-gray-300 text-sm">
+          Initializing camera and hand detection...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full">
+      {/* Video element - mirrored for intuitive gesture control */}
       <video
         ref={videoRef}
         autoPlay
-        playsInline
         muted
-        className="w-full h-96 object-cover rounded-lg shadow-lg transform scale-x-[-1]"
-        style={{ display: isDetecting ? "block" : "none" }}
+        className="w-full h-full object-cover rounded-lg bg-black transform scale-x-[-1]"
       />
-      {!isDetecting && (
-        <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">
-          <p className="text-gray-500">Camera off</p>
-        </div>
-      )}
-      <div className="mt-2 text-center text-sm text-gray-600">
-        Status: {currentGesture}
-      </div>
     </div>
   );
 };
