@@ -554,7 +554,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         </div>
 
         {/* Main Content - Side by side layout */}
-        <div className="pt-20 min-h-screen p-4">
+        <div className="pt-20 h-[calc(100vh-5rem)] p-4">
           <div className="max-w-7xl mx-auto h-full">
             <div className="flex flex-col lg:flex-row gap-6 h-full">
               {/* Left: Webcam */}
@@ -569,7 +569,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
               </div>
 
               {/* Right: Gesture Controls */}
-              <div className="lg:w-[26rem] bg-gray-800 rounded-lg p-6">
+              <div className="lg:w-[26rem] lg:max-h-screen bg-gray-800 rounded-lg p-6 overflow-y-auto">
                 <div className="grid grid-cols-1 gap-4 text-base">
                   <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
                     <span className="text-2xl">☝️</span>
@@ -599,12 +599,12 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                   <div className="flex flex-col items-center justify-center">
                     {selectedFile ? (
                       <>
-                        <div className="flex justify-center w-full">
+                        <div className="flex justify-center w-56 h-56">
                           {imageUrl ? (
                             <img
                               src={imageUrl}
                               alt={selectedFile.name}
-                              className="w-full h-full max-w-56 max-h-56 rounded-lg object-contain border border-gray-600"
+                              className="w-full h-full rounded-lg object-contain border border-gray-600"
                             />
                           ) : (
                             <div className="w-24 h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">

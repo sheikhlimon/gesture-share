@@ -291,27 +291,76 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         streamRef.current = stream;
 
-        // Initialize HandLandmarker with tasks-vision
-        const vision = await FilesetResolver.forVisionTasks(
+        // Initialize HandLandmarker with tasks-vision using multiple CDN fallbacks
+        let vision;
+        let visionError: Error | null = null;
+        
+        // Try different CDN URLs for better reliability
+        const cdnUrls = [
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
+          "https://unpkg.com/@mediapipe/tasks-vision@0.10.0/wasm",
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
-        );
+        ];
+
+        for (const cdnUrl of cdnUrls) {
+          try {
+            console.log(`Trying MediaPipe CDN: ${cdnUrl}`);
+            vision = await FilesetResolver.forVisionTasks(cdnUrl);
+            console.log("MediaPipe CDN loaded successfully");
+            visionError = null;
+            break;
+          } catch (error) {
+            console.warn(`Failed to load MediaPipe from ${cdnUrl}:`, error);
+            visionError = error as Error;
+          }
+        }
+
+        if (!vision || visionError) {
+          throw new Error(
+            `Failed to load MediaPipe from all CDN sources. Last error: ${visionError?.message}`,
+          );
+        }
 
         try {
-          handLandmarkerRef.current = await HandLandmarker.createFromOptions(
-            vision,
-            {
-              baseOptions: {
-                delegate: "GPU",
-                modelAssetPath:
-                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+          // Try GPU delegation first, fallback to CPU
+          let handLandmarker;
+          try {
+            handLandmarker = await HandLandmarker.createFromOptions(
+              vision,
+              {
+                baseOptions: {
+                  delegate: "GPU",
+                  modelAssetPath:
+                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                },
+                runningMode: "VIDEO",
+                numHands: 1,
               },
-              runningMode: "VIDEO",
-              numHands: 1,
-            },
-          );
+            );
+            console.log("HandLandmarker created with GPU delegation");
+          } catch (gpuError) {
+            console.warn("GPU delegation failed, trying CPU:", gpuError);
+            handLandmarker = await HandLandmarker.createFromOptions(
+              vision,
+              {
+                baseOptions: {
+                  delegate: "CPU",
+                  modelAssetPath:
+                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                },
+                runningMode: "VIDEO",
+                numHands: 1,
+              },
+            );
+            console.log("HandLandmarker created with CPU delegation");
+          }
+          
+          handLandmarkerRef.current = handLandmarker;
         } catch (mpError) {
           console.error("HandLandmarker creation failed:", mpError);
-          throw mpError;
+          throw new Error(
+            `Failed to create HandLandmarker: ${mpError instanceof Error ? mpError.message : String(mpError)}`,
+          );
         }
 
         setIsLoading(false);
@@ -510,22 +559,23 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
   // Set up video stream when stream becomes available
   useEffect(() => {
-    if (!streamRef.current) {
+    const stream = streamRef.current;
+    const video = videoRef.current;
+    if (!stream) {
       return;
     }
 
     const setupVideo = () => {
-      if (!videoRef.current) {
+      const currentVideo = videoRef.current;
+      if (!currentVideo) {
         return;
       }
-
-      const video = videoRef.current;
       
       // Set the stream to the video element
-      video.srcObject = streamRef.current;
+      currentVideo.srcObject = stream;
       
       // Try to play the video
-      video.play().catch((error) => {
+      currentVideo.play().catch((error) => {
         console.warn("Video autoplay failed:", error);
       });
     };
@@ -535,9 +585,10 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
     // Keep trying until video element is ready
     const intervalId = setInterval(() => {
-      if (videoRef.current && !videoRef.current.srcObject) {
+      const currentVideo = videoRef.current;
+      if (currentVideo && !currentVideo.srcObject) {
         setupVideo();
-      } else if (videoRef.current?.srcObject) {
+      } else if (currentVideo?.srcObject) {
         clearInterval(intervalId);
       }
     }, 50);
@@ -545,13 +596,13 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     return () => {
       clearInterval(intervalId);
       // Cleanup when stream changes or component unmounts
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
+      if (video?.srcObject) {
+        const currentStream = video.srcObject as MediaStream;
+        currentStream.getTracks().forEach((track) => track.stop());
+        video.srcObject = null;
       }
     };
-  }, [streamRef.current]); // Only trigger when stream actually changes
+  }, []); // Empty dependency array - effect handles its own ref checking
 
   if (error) {
     return (
