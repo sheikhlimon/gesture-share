@@ -575,7 +575,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
   // Set up video stream when stream becomes available
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout | null = null;
+    let timeoutId: number | null = null;
     
     const setupVideo = () => {
       const stream = streamRef.current;
