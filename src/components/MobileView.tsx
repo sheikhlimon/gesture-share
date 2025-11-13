@@ -63,9 +63,27 @@ export const MobileView: React.FC<MobileViewProps> = ({
         const mobilePeer = new Peer.Peer("", {
           config: {
             iceServers: [
+              // Google STUN servers (most reliable)
               { urls: "stun:stun.l.google.com:19302" },
               { urls: "stun:stun1.l.google.com:19302" },
               { urls: "stun:stun2.l.google.com:19302" },
+
+              // Free STUN servers from other providers
+              { urls: "stun:stun.cloudflare.com:3478" },
+              { urls: "stun:stun.services.mozilla.com" },
+              { urls: "stun:stun.relay.metered.ca:80" },
+
+              // Free TURN servers (for fallback when STUN fails)
+              {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
+              {
+                urls: "turn:openrelay.metered.ca:443",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
             ],
           },
         });

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { DesktopView } from "./components/DesktopView";
 import { MobileView } from "./components/MobileView";
 
@@ -10,7 +10,26 @@ function App() {
     handDetection: false,
     deviceDetection: false,
   });
-  const initializationTimeoutRef = useRef<number | null>(null);
+
+  // Check if URL has peer parameter - if so, force mobile view
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasPeerParam = urlParams.has("peer");
+    if (hasPeerParam) {
+      setIsMobile(true);
+      setIsLoading(false); // Skip loading for QR connections
+      setInitializationProgress({
+        camera: true,
+        handDetection: true,
+        deviceDetection: true,
+      });
+      return; // Skip normal device detection
+    }
+
+    // Normal device detection for desktop usage
+    detectDevice();
+    initializeCameraAndDetection();
+  }, []);
 
   const handleFileSelect = useCallback((file: File) => {
     console.log("File selected for sharing:", file.name);
@@ -93,35 +112,7 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
-    // Start initialization immediately - run only once on mount
-    let isMounted = true;
-
-    const startInitialization = async () => {
-      if (!isMounted) return;
-
-      detectDevice();
-      await initializeCameraAndDetection();
-    };
-
-    startInitialization();
-
-    // Set a timeout to hide loading screen after max 3 seconds
-    const maxTimeout = setTimeout(() => {
-      if (isMounted) {
-        setIsLoading(false);
-      }
-    }, 3000);
-
-    return () => {
-      isMounted = false;
-      const currentTimeout = initializationTimeoutRef.current;
-      if (currentTimeout) {
-        clearTimeout(currentTimeout);
-      }
-      clearTimeout(maxTimeout);
-    };
-  }, [detectDevice, initializeCameraAndDetection]); // Added dependencies
+  // This useEffect is now handled by the one above
 
   // Separate effect to check initialization progress
   useEffect(() => {
