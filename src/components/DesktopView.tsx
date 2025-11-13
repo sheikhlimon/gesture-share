@@ -189,22 +189,19 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   }, [connections.size]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [showFilePickerButton, setShowFilePickerButton] = useState(false);
 
-  const openFilePicker = useCallback(() => {
-    console.log("=== Opening file picker ===");
+  const openFilePickerDirectly = useCallback(() => {
+    console.log("=== Opening file picker directly ===");
     
-    // Prevent multiple simultaneous file pickers
-    if (fileInputRef.current) {
-      console.log("File picker already exists, skipping");
-      return;
-    }
-
-    // Create a new file input
+    // Create and trigger file input immediately (user activated)
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'image/*,.pdf,.doc,.docx,.txt';
+    fileInput.style.position = 'absolute';
+    fileInput.style.left = '-9999px';
+    fileInput.style.top = '-9999px';
     
-    // Handle file selection
     fileInput.onchange = (event) => {
       const files = (event.target as HTMLInputElement).files;
       if (files && files.length > 0) {
@@ -213,42 +210,32 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
         setSelectedFile(file);
         onFileSelect(file);
       }
-      // Clean up the input element
-      if (fileInput.parentNode) {
-        document.body.removeChild(fileInput);
-      }
-      fileInputRef.current = null;
+      document.body.removeChild(fileInput);
+      setShowFilePickerButton(false);
     };
 
-    // Handle cancellation (user closing picker without selecting)
     fileInput.oncancel = () => {
       console.log("File picker cancelled");
-      // Clean up the input element
-      if (fileInput.parentNode) {
-        document.body.removeChild(fileInput);
-      }
-      fileInputRef.current = null;
+      document.body.removeChild(fileInput);
+      setShowFilePickerButton(false);
     };
 
-    // Store reference and add to DOM
-    fileInputRef.current = fileInput;
-    fileInput.style.position = 'absolute';
-    fileInput.style.left = '-9999px';
-    fileInput.style.top = '-9999px';
     document.body.appendChild(fileInput);
-
-    // Trigger the file picker
-    try {
-      fileInput.click();
-    } catch (error) {
-      console.error("Failed to open file picker:", error);
-      // Clean up on error
-      if (fileInput.parentNode) {
-        document.body.removeChild(fileInput);
-      }
-      fileInputRef.current = null;
-    }
+    
+    // This should work because it's triggered by a user click
+    fileInput.click();
   }, [onFileSelect]);
+
+  const triggerFilePickerFlow = useCallback(() => {
+    console.log("=== Triggering file picker flow ===");
+    // Show the button overlay for user to click
+    setShowFilePickerButton(true);
+    
+    // Auto-hide after 5 seconds if not clicked
+    setTimeout(() => {
+      setShowFilePickerButton(false);
+    }, 5000);
+  }, []);
 
   const sendFile = useCallback(
     async (file: File, connection: Peer.DataConnection) => {
@@ -315,8 +302,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
           break;
 
         case "FIST":
-          // Open file picker
-          openFilePicker();
+          // Trigger file picker flow (shows button overlay)
+          triggerFilePickerFlow();
           break;
 
         case "OK_SIGN":
@@ -384,6 +371,41 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 <span className="font-medium text-white">
                   {connectionStatus}
                 </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Picker Button Overlay */}
+      {showFilePickerButton && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowFilePickerButton(false)}
+        >
+          <div
+            className="bg-gray-800 text-white p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center">
+              <div className="text-4xl mb-4">✊</div>
+              <h3 className="text-lg font-semibold mb-2">
+                Fist Gesture Detected
+              </h3>
+              <p className="text-gray-400 mb-6">
+                Click the button below to open the file selector
+              </p>
+              <button
+                onClick={openFilePickerDirectly}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Select File to Share
+              </button>
+              <p className="text-xs text-gray-500 mt-3">
+                This button will disappear in 5 seconds
               </p>
             </div>
           </div>
