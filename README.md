@@ -1,123 +1,110 @@
 # Gesture Share
 
-A revolutionary gesture-based file sharing platform that enables seamless file transfer between desktop and mobile devices using intuitive hand gestures.
+A desktop application that enables seamless file sharing between your computer and mobile device using intuitive hand gestures.
 
-## 🚀 Quick Start
+## Features
 
-```bash
-# Install dependencies (requires fnm for Node.js version management)
-fnm use && npm install
+- **Gesture-Controlled File Sharing**: Use hand gestures to control file transfers
+- **Desktop-Optimized**: Built specifically for desktop use with webcam integration
+- **Real-time Hand Detection**: Uses MediaPipe for accurate gesture recognition
+- **QR Code Connections**: Easy mobile device pairing via QR codes
+- **Multiple Gesture Controls**:
+  - ✌️ **Peace Sign**: Show QR code for mobile connection
+  - ✊ **Fist**: Open file selector to choose files
+  - 👍 **Thumbs Up**: Send selected file to connected device
+  - ☝️ **Point**: Navigate through file selection
+  - ✋ **Open Hand**: Reset/ready state
 
-# Start development server
-npm run dev
-```
+## Quick Start
 
-## 📁 Project Structure
+### Prerequisites
+
+- Node.js 18 or higher
+- A webcam (built-in or external)
+- Modern browser with camera permissions
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd gesture-share
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start the development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open your browser**
+   Navigate to `http://localhost:5173`
+
+5. **Allow camera access** when prompted
+
+### Usage
+
+1. **Launch the app** and allow camera permissions
+2. **Make a Peace Sign (✌️)** to display the QR code
+3. **Scan the QR code** with your mobile device to connect
+4. **Make a Fist (✊)** to open the file selector
+5. **Select a file** using your mouse or Point gesture (☝️)
+6. **Give a Thumbs Up (👍)** to send the file to your mobile device
+
+## Project Structure
 
 ```
 gesture-share/
 ├── src/
-│   ├── components/          # React components
-│   │   ├── GestureDetector.tsx    # Hand gesture detection and recognition
-│   │   ├── DesktopView.tsx        # Desktop interface with webcam feed
-│   │   ├── MobileView.tsx         # Mobile receiving interface
-│   │   ├── QRDisplay.tsx          # QR code generation and display
-│   │   └── FileSelector.tsx       # File selection interface
-│   ├── types/
-│   │   └── gesture.ts             # TypeScript type definitions
-│   ├── App.tsx                    # Main application component
-│   ├── main.tsx                   # Application entry point
-│   └── index.css                  # Global styles and animations
+│   ├── components/
+│   │   ├── App.tsx              # Main application component
+│   │   ├── DesktopView.tsx      # Desktop interface with gesture controls
+│   │   ├── GestureDetector.tsx   # Hand gesture detection logic
+│   │   ├── FileSelector.tsx     # File selection modal
+│   │   ├── QRDisplay.tsx        # QR code generation and display
+│   │   └── MobileView.tsx       # Mobile interface (simplified)
+│   ├── hooks/
+│   │   ├── useFileTransfer.ts   # File transfer state management
+│   │   ├── usePeerConnection.ts # Peer-to-peer connection handling
+│   │   └── useQRDisplay.ts      # QR code display logic
+│   ├── lib/
+│   │   ├── peer.ts              # PeerJS configuration and utilities
+│   │   └── qr.ts                # QR code generation helpers
+│   ├── styles/
+│   │   └── globals.css          # Global CSS variables and styles
+│   └── main.tsx                 # Application entry point
 ├── public/
-│   └── index.html                 # HTML template
-├── recipes/                       # AI agent recipes for development
-├── agent.md                       # Agent progress tracking
-└── plan.md                       # Comprehensive project plan
+│   └── index.html               # HTML template
+├── package.json                 # Dependencies and scripts
+└── README.md                    # This file
 ```
 
-## 🛠️ Technology Stack
+### Key Components
 
-### Frontend Framework
-- **React 19**: Modern React with concurrent features and optimizations
-- **TypeScript**: Type-safe development with comprehensive type checking
-- **Vite**: Fast development and build tool with hot module replacement
-- **TailwindCSS**: Utility-first CSS framework for rapid styling
+- **GestureDetector**: Handles webcam capture and MediaPipe hand tracking
+- **DesktopView**: Main desktop interface with gesture controls and status
+- **FileSelector**: Modal for browsing and selecting files to share
+- **QRDisplay**: Generates and displays connection QR codes
 
-### AI & Gesture Detection
-- **@mediapipe/tasks-vision**: Latest MediaPipe vision tasks API
-- **TensorFlow.js**: Machine learning inference in the browser
-- **Hand Landmarker**: Precise hand landmark detection and tracking
-- **Custom Gesture Recognition**: Tailored gesture detection algorithms
+## Technology Stack
 
-### File Sharing & Communication
-- **PeerJS**: Simplified WebRTC peer-to-peer connections
-- **WebRTC**: Real-time communication between browsers
-- **DataChannel API**: Direct file transfer between connected peers
-- **Network IP Detection**: Automatic network IP detection for cross-device connectivity
+- **React 18** - UI framework
+- **TypeScript** - Type safety
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **MediaPipe Tasks Vision** - Hand landmark detection
+- **PeerJS** - Peer-to-peer connections
+- **QRCode.js** - QR code generation
 
-### Device Pairing & QR
-- **QRCode.js**: QR code generation for device pairing
-- **Modern QR Modal**: Clean, white-themed modal with rounded corners
+## Development
 
-### Development Tools
-- **ESLint**: Code quality and consistency enforcement
-- **TypeScript**: Static type checking and enhanced IDE support
-- **Node.js**: Managed via fnm
-
-## 🎮 Features
-
-### Gesture Recognition
-- **Peace Sign (✌️)**: Display QR code for device pairing
-- **Fist (✊)**: Open file selector menu
-- **Thumbs Up (👍)**: Send selected files to connected device
-- **Real-time Detection**: Continuous hand tracking at 30+ FPS
-- **Visual Feedback**: Real-time gesture visualization and confidence indicators
-
-### File Transfer
-- **Direct P2P Transfer**: No intermediate servers or cloud storage
-- **End-to-End Encryption**: All transfers encrypted via WebRTC
-- **Progress Tracking**: Real-time transfer progress and speed metrics
-- **Multiple File Support**: Batch file selection and transfer
-- **Automatic Download**: Files automatically saved on mobile devices
-
-### Device Pairing
-- **QR Code Generation**: Dynamic QR code with peer ID for mobile pairing
-- **Auto-close Modal**: QR modal automatically closes when connected
-- **Network IP Detection**: Automatic detection of actual network IP
-- **Cross-Device Compatibility**: Works between desktop and mobile devices
-
-### User Interface
-- **Desktop View**: Webcam feed with gesture overlay and controls
-- **Mobile View**: QR scanner and file reception interface
-- **Manual Override**: User-controlled desktop/mobile view switching
-- **Modern Design**: Clean, responsive interface with TailwindCSS
-- **Error Handling**: Comprehensive error recovery and user notifications
-
-## 📖 How to Use
-
-### Desktop Setup
-1. Open the application on desktop
-2. Allow camera access for gesture detection
-3. Make a **peace sign** to display the QR code
-4. Wait for mobile device to connect
-
-### Mobile Setup
-1. Open the application on mobile device
-2. Scan the QR code or manually enter the peer ID
-3. Wait for connection to be established
-
-### File Transfer
-1. On desktop, make a **fist** gesture to open file selector
-2. Select files to send (images, documents, etc.)
-3. Make a **thumbs up** gesture to send the files
-4. Mobile device will automatically receive and save the files
-
-## 🔧 Development Commands
+### Available Scripts
 
 ```bash
-# Install dependencies
-fnm use && npm install
-
 # Start development server
 npm run dev
 
@@ -127,44 +114,61 @@ npm run build
 # Preview production build
 npm run preview
 
-# Run linting
+# Type checking
+npm run type-check
+
+# Linting
 npm run lint
 
-# Fix linting issues
-npm run lint:fix
+# Format code
+npm run format
 ```
 
-## 🔒 Security & Privacy
+### Environment Setup
 
-- **End-to-End Encryption**: All file transfers encrypted via WebRTC
-- **No Server Storage**: Files never stored on intermediate servers
-- **Temporary Peer IDs**: Auto-generated disposable connection identifiers
-- **Local Processing**: All gesture processing happens client-side
-- **Privacy First**: No data collection or analytics tracking
+The project uses `mise` for development environment management. Install mise and run:
 
-## 📱 Browser Compatibility
+```bash
+mise install
+```
 
-- **Chrome**: Full support with latest features
-- **Firefox**: Full support with WebRTC capabilities
-- **Safari**: Full support on iOS and macOS
-- **Edge**: Full support with Chromium engine
+This will set up the correct Node.js version and dependencies automatically.
 
-## 🚀 Performance
+## Camera Requirements
 
-- **Optimized Resolution**: 640x480 video for better performance
-- **Model Optimization**: Efficient MediaPipe configuration
-- **Memory Management**: Proper cleanup and garbage collection
-- **Connection Reuse**: Reuse WebRTC connections for multiple transfers
-- **Fast Loading**: <2 seconds initial load time
+- Minimum resolution: 640x480
+- Recommended resolution: 1280x720
+- Frame rate: 30fps (recommended)
+- Must support getUserMedia API
+- HTTPS required for camera access (localhost is exempt)
 
-## 🤝 Contributing
+## Browser Compatibility
 
-This project is built with cutting-edge web technologies and AI-powered gesture recognition. For development setup and AI agent configuration, see `recipes/development-guide.md`.
+- Chrome 88+
+- Firefox 85+
+- Safari 14+
+- Edge 88+
 
-## 📄 License
+## Troubleshooting
 
-MIT License - feel free to use this project for your own applications.
+### Camera Not Working
+1. Check browser camera permissions
+2. Ensure no other app is using the camera
+3. Try refreshing the page
+4. Check if using HTTPS (required for camera access)
 
----
+### Gestures Not Recognized
+1. Ensure good lighting conditions
+2. Keep your hand visible in the camera frame
+3. Make clear, distinct gestures
+4. Check camera resolution settings
 
-*Built with ❤️ using React, TypeScript, and MediaPipe for an intuitive file sharing experience.*
+### Connection Issues
+1. Ensure both devices have internet access
+2. Check firewall settings for peer connections
+3. Try generating a new QR code
+4. Verify both devices are on the same network (recommended)
+
+## License
+
+This project is licensed under the MIT License.
