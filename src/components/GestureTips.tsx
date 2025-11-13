@@ -14,13 +14,14 @@ const GestureTips: React.FC<GestureTipsProps> = ({
     return null;
   }
 
-  // Show pro tip when no action gesture is detected
-  // Action gestures: POINT_UP, FIST, PEACE_SIGN
-  const isActionGesture = currentGesture === "POINT_UP" || 
-                         currentGesture === "FIST" || 
-                         currentGesture === "PEACE_SIGN";
+  // Show pro tip only for specific non-action gestures
+  // Show for: "none", "OPEN_HAND", "PARTIAL" 
+  // Hide for: POINT_UP, FIST, PEACE_SIGN, and empty/undefined gestures
+  const shouldShowTip = currentGesture === "none" || 
+                       currentGesture === "OPEN_HAND" || 
+                       currentGesture === "PARTIAL";
 
-  if (!isActionGesture) {
+  if (shouldShowTip) {
     return (
       <div className="absolute top-4 right-4 z-20 animate-in slide-in-from-top-2 duration-300">
         <div className="bg-white/95 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 max-w-xs">
