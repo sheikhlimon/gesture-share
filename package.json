@@ -1,7 +1,32 @@
 {
   "name": "gesture-share",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A desktop application that enables seamless file sharing between your computer and mobile device using intuitive hand gestures powered by MediaPipe and WebRTC.",
+  "keywords": [
+    "gesture-recognition",
+    "file-sharing",
+    "mediapipe",
+    "webrtc",
+    "computer-vision",
+    "hand-tracking",
+    "react",
+    "typescript",
+    "peer-to-peer"
+  ],
+  "author": {
+    "name": "Gesture Share Team",
+    "email": "contact@gestureshare.app"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/gesture-share.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/gesture-share/issues"
+  },
+  "homepage": "https://gestureshare.app",
   "type": "module",
   "scripts": {
     "dev": "vite",

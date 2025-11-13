@@ -80,36 +80,28 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       });
     }
 
-    // Simplified OK Sign detection - focus on thumb-index proximity
-    const thumbIndexDistance = Math.sqrt(
-      Math.pow(thumbTip.x - indexTip.x, 2) +
-        Math.pow(thumbTip.y - indexTip.y, 2),
-    );
-
-    // Check for OK sign - thumb and index tips touching
-    if (thumbIndexDistance < 0.12) { // More generous threshold
-      // Other fingers should be relaxed (not fully extended)
-      const otherFingersExtended = fingerStates[2] || fingerStates[3] || fingerStates[4];
+    // Peace Sign detection - index and middle fingers extended
+    if (fingerStates[1] && fingerStates[2]) { // Both index and middle extended
+      // Check that other fingers are not extended (thumb can be extended, ring and pinky should be down)
+      const otherFingersExtended = fingerStates[3] || fingerStates[4]; // Ring or pinky extended
       
       if (!otherFingersExtended) {
-        // Additional check: thumb and index should be curled (not straight)
-        const indexPip = landmarks[fingerPip[1]];
-        const indexMcp = landmarks[fingerMcp[1]];
-        const indexLength = Math.sqrt(
-          Math.pow(indexTip.x - indexMcp.x, 2) +
-            Math.pow(indexTip.y - indexMcp.y, 2)
-        );
-        const indexPipToMcp = Math.sqrt(
-          Math.pow(indexPip.x - indexMcp.x, 2) +
-            Math.pow(indexPip.y - indexMcp.y, 2)
+        // Additional validation: index and middle should be spread apart
+        const middleTip = landmarks[fingerTips[2]];
+        const indexMiddleDistance = Math.sqrt(
+          Math.pow(indexTip.x - middleTip.x, 2) +
+            Math.pow(indexTip.y - middleTip.y, 2)
         );
         
-        // For OK sign, index finger should be curled (PIP closer to MCP than tip)
-        const indexCurled = indexPipToMcp > indexLength * 0.3;
-        
-        if (indexCurled) {
-          console.log("OK_SIGN detected", { thumbIndexDistance, extendedFingers, fingerStates });
-          return "OK_SIGN";
+        // Index and middle fingers should be reasonably separated (forming V shape)
+        if (indexMiddleDistance > 0.08) { // Minimum separation for peace sign
+          console.log("PEACE_SIGN detected", { 
+            indexMiddleDistance, 
+            extendedFingers, 
+            fingerStates,
+            thumbExtended: fingerStates[0]
+          });
+          return "PEACE_SIGN";
         }
       }
     }
@@ -529,7 +521,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     switch (gesture) {
       case "POINT_UP": return "☝️";
       case "FIST": return "✊";
-      case "OK_SIGN": return "👌";
+      case "PEACE_SIGN": return "✌️";
       default: return "";
     }
   };

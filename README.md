@@ -11,7 +11,7 @@ A desktop application that enables seamless file sharing between your computer a
 - **Multiple Gesture Controls**:
   - ☝️ **Point Up**: Show QR code for mobile connection
   - ✊ **Fist**: Open file selector to choose files
-  - 👌 **OK Sign**: Send selected file to connected device
+  - ✌️ **Peace Sign**: Send selected file to connected device
   - ✋ **Open Hand**: Default/ready state
 
 ## Quick Start
@@ -52,7 +52,7 @@ A desktop application that enables seamless file sharing between your computer a
 3. **Scan the QR code** with your mobile device to connect
 4. **Make a Fist (✊)** to open the native file picker
 5. **Select a file** from your computer
-6. **Make an OK Sign (👌)** to send the file to your mobile device
+6. **Make a Peace Sign (✌️)** to send the file to your mobile device
 
 ## Project Structure
 
@@ -89,13 +89,43 @@ gesture-share/
 
 ## Technology Stack
 
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first CSS framework
-- **MediaPipe Tasks Vision** - Hand landmark detection
-- **PeerJS** - Peer-to-peer connections
-- **QRCode.js** - QR code generation
+### Frontend Framework
+- **React 18.2+** - Modern UI framework with hooks and concurrent features
+- **TypeScript 5.0+** - Static type checking and enhanced developer experience
+
+### Build & Development Tools
+- **Vite 5.0+** - Fast build tool with HMR and optimized bundling
+- **ESLint** - Code linting and consistency checks
+- **Prettier** - Code formatting and style enforcement
+
+### Styling & UI
+- **Tailwind CSS 3.0+** - Utility-first CSS framework with custom configurations
+- **PostCSS** - CSS transformation and optimization
+
+### Computer Vision & ML
+- **MediaPipe Tasks Vision** - Google's hand landmark detection and tracking
+- **WebGL Acceleration** - GPU-accelerated image processing
+- **Real-time Gesture Recognition** - Custom gesture classification algorithms
+
+### Networking & Communication
+- **PeerJS** - WebRTC-based peer-to-peer connections for direct file transfers
+- **WebRTC** - Real-time communication between browsers
+- **STUN/TURN Servers** - NAT traversal for peer connections
+
+### Utilities & Libraries
+- **QRCode.js** - Dynamic QR code generation for mobile connections
+- **File API** - Native browser file handling and transfers
+- **getUserMedia API** - Camera and microphone access
+
+### Browser APIs
+- **Canvas API** - Image processing and visualization
+- **Web Workers** - Background processing for performance
+- **LocalStorage** - Client-side data persistence
+
+### Development Environment
+- **Node.js 18+** - JavaScript runtime for development and build tools
+- **fnm** - Fast Node Manager for version control
+- **GitHub Actions** - Automated CI/CD and deployment pipelines
 
 ## Development
 
