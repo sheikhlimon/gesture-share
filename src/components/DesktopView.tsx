@@ -511,7 +511,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             <div className="flex items-center gap-4">
               {/* Logo */}
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-700 rounded-lg flex items-center justify-center shadow-lg">
                   <svg
                     className="w-5 h-5 text-white"
                     fill="none"
@@ -526,7 +526,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                     />
                   </svg>
                 </div>
-                <h1 className="text-3xl font-bold font-display">Gesture Share</h1>
+                <h1 className="text-3xl font-bold font-display bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">Gesture Share</h1>
               </div>
             </div>
             <div className="flex items-center gap-4">

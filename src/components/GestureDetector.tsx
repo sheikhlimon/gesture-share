@@ -33,7 +33,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     if (shouldShowTip) {
       return (
         <div className="absolute top-4 left-4 bg-gray-800/80 backdrop-blur-lg border border-gray-600/50 rounded-xl px-4 py-3 shadow-xl flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <span className="text-xl">✋</span>
+          <span className="text-3xl">✋</span>
           <span className="text-base font-medium text-gray-200 font-sans">
             Show open hand before each gesture for better detection
           </span>
