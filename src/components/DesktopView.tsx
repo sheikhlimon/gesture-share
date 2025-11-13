@@ -162,14 +162,17 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
         });
 
         conn.on("close", () => {
+          console.log("Desktop connection closed to:", conn.peer);
           setConnections((prev) => {
             const newMap = new Map(prev);
             newMap.delete(conn.peer);
+            console.log("Remaining connections:", newMap.size);
+            if (newMap.size === 0) {
+              console.log("No connections remaining, setting status to idle");
+              setConnectionStatus("idle");
+            }
             return newMap;
           });
-          if (connections.size === 0) {
-            setConnectionStatus("idle");
-          }
         });
       });
 
