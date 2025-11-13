@@ -18,23 +18,23 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   // Internal pro tip component that shows when no cooldown is active
   const GestureTips: React.FC = () => {
     // Show pro tip when no hand is detected or hand is not in action gesture
-    // Show for: "" (no hand), "none", "OPEN_HAND", "PARTIAL" 
+    // Show for: "" (no hand), "none", "OPEN_HAND", "PARTIAL"
     // Hide for: POINT_UP, FIST, PEACE_SIGN (action gestures)
     // Also hide when cooldown is active
     // Also hide when file picker button is shown (passed via currentGesture prop)
-    const shouldShowTip = !cooldownRemaining && 
-                         currentGesture !== "FILE_PICKER_ACTIVE" && (
-      !currentGesture || 
-      currentGesture === "none" || 
-      currentGesture === "OPEN_HAND" || 
-      currentGesture === "PARTIAL"
-    );
+    const shouldShowTip =
+      !cooldownRemaining &&
+      currentGesture !== "FILE_PICKER_ACTIVE" &&
+      (!currentGesture ||
+        currentGesture === "none" ||
+        currentGesture === "OPEN_HAND" ||
+        currentGesture === "PARTIAL");
 
     if (shouldShowTip) {
       return (
-        <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 max-w-xs animate-in slide-in-from-left-2 duration-300">
-          <span className="text-lg">✋</span>
-          <span className="text-sm text-gray-700">
+        <div className="absolute top-4 left-4 bg-gray-800/80 backdrop-blur-lg border border-gray-600/50 rounded-xl px-4 py-3 shadow-xl flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <span className="text-xl">✋</span>
+          <span className="text-base font-medium text-gray-200 font-sans">
             Show open hand before each gesture for better detection
           </span>
         </div>

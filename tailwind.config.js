@@ -51,14 +51,22 @@ export default {
       },
       fontFamily: {
         sans: [
-          'Inter',
+          '"Exo 2"',
           '-apple-system',
           'BlinkMacSystemFont',
           '"Segoe UI"',
           'Roboto',
           '"Helvetica Neue"',
           'Arial',
-          '"Noto Sans"',
+          'sans-serif',
+        ],
+        display: [
+          '"Space Grotesk"',
+          '"Exo 2"',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          '"Segoe UI"',
+          'Roboto',
           'sans-serif',
         ],
         mono: [

@@ -431,7 +431,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
-                <h3 className="text-base font-semibold mb-3">
+                <h3 className="text-lg font-semibold mb-3 font-display">
                   Connect Your Phone
                 </h3>
                 <QRDisplay
@@ -472,7 +472,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             >
               <div className="text-center">
                 <div className="text-4xl mb-4">✊</div>
-                <h3 className="text-lg font-semibold mb-2">
+                <h3 className="text-lg font-semibold mb-2 font-display">
                   Fist Gesture Detected
                 </h3>
                 <p className="text-gray-400 mb-6">
@@ -526,7 +526,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                     />
                   </svg>
                 </div>
-                <h1 className="text-2xl font-bold">Gesture Share</h1>
+                <h1 className="text-3xl font-bold font-display">Gesture Share</h1>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -562,32 +562,34 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                 <GestureDetector
                   onGestureDetected={handleGestureDetected}
                   isDetecting={true}
-                  currentGesture={showFilePickerButton ? "FILE_PICKER_ACTIVE" : currentGesture}
+                  currentGesture={
+                    showFilePickerButton ? "FILE_PICKER_ACTIVE" : currentGesture
+                  }
                 />
               </div>
 
               {/* Right: Gesture Controls */}
               <div className="lg:w-[26rem] bg-gray-800 rounded-lg p-6">
-                <div className="grid grid-cols-1 gap-4 text-sm">
-                  <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                    <span className="text-2xl">☝️</span>
+                <div className="grid grid-cols-1 gap-4 text-base">
+                  <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
+                    <span className="text-3xl">☝️</span>
                     <div>
-                      <p className="font-medium">Point Up</p>
-                      <p className="text-gray-400">Show QR Code</p>
+                      <p className="font-semibold text-lg text-center">Point Up</p>
+                      <p className="text-gray-400 text-center">Show QR Code</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                    <span className="text-2xl">✊</span>
+                  <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
+                    <span className="text-3xl">✊</span>
                     <div>
-                      <p className="font-medium">Fist</p>
-                      <p className="text-gray-400">Open File Menu</p>
+                      <p className="font-semibold text-lg text-center">Fist</p>
+                      <p className="text-gray-400 text-center">Open File Menu</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
-                    <span className="text-2xl">✌️</span>
+                  <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
+                    <span className="text-3xl">✌️</span>
                     <div>
-                      <p className="font-medium">Peace Sign</p>
-                      <p className="text-gray-400">Send Selected File</p>
+                      <p className="font-semibold text-lg text-center">Peace Sign</p>
+                      <p className="text-gray-400 text-center">Send Selected File</p>
                     </div>
                   </div>
                 </div>
@@ -686,7 +688,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
               </div>
               <div className="flex-1 min-w-0">
                 <p
-                  className={`font-semibold text-sm ${
+                  className={`font-semibold text-sm font-display ${
                     notification.type === "success"
                       ? "text-green-800"
                       : "text-red-800"
