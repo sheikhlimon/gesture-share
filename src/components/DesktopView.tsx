@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { GestureDetector } from "./GestureDetector";
 import { QRDisplay } from "./QRDisplay";
-import { FileSelector } from "./FileSelector";
 import * as Peer from "peerjs";
 
 interface FileStart {
@@ -88,6 +87,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const [peerId, setPeerId] = useState("");
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "connected"
   >("idle");
@@ -97,9 +97,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const [currentGesture, setCurrentGesture] = useState<string>("");
   const [currentHost, setCurrentHost] = useState<string>("");
   const [showQRModal, setShowQRModal] = useState(false);
-  const [showFileSelector, setShowFileSelector] = useState(false);
-  const [fileSelectorIndex, setFileSelectorIndex] = useState(0);
-  const [availableFiles, setAvailableFiles] = useState<File[]>([]);
+  
 
   const peerRef = useRef<Peer.Peer | null>(null);
 
@@ -115,6 +113,19 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       setShowQRModal(false);
     }
   }, [connectionStatus, showQRModal]);
+
+  // Generate image URL when file is selected
+  useEffect(() => {
+    if (selectedFile && selectedFile.type.startsWith('image/')) {
+      const url = URL.createObjectURL(selectedFile);
+      setImageUrl(url);
+      return () => {
+        URL.revokeObjectURL(url);
+      };
+    } else {
+      setImageUrl(null);
+    }
+  }, [selectedFile]);
 
   useEffect(() => {
     // Only create PeerJS connection if this component is visible
@@ -176,6 +187,51 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       setConnectionStatus("idle");
     }
   }, [connections.size]);
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const openFilePicker = useCallback(() => {
+    // Create a persistent file input
+    if (!fileInputRef.current) {
+      fileInputRef.current = document.createElement('input');
+      fileInputRef.current.type = 'file';
+      fileInputRef.current.accept = 'image/*,.pdf,.doc,.docx,.txt';
+      fileInputRef.current.onchange = (event) => {
+        const files = (event.target as HTMLInputElement).files;
+        if (files && files.length > 0) {
+          const file = files[0];
+          console.log("File selected:", file.name);
+          setSelectedFile(file);
+          onFileSelect(file);
+        }
+      };
+    }
+    // Try to trigger file picker
+    try {
+      fileInputRef.current.click();
+    } catch (error) {
+      console.error("File picker error:", error);
+      // Fallback: create a temporary input and trigger it
+      const tempInput = document.createElement('input');
+      tempInput.type = 'file';
+      tempInput.accept = 'image/*,.pdf,.doc,.docx,.txt';
+      tempInput.style.position = 'absolute';
+      tempInput.style.left = '-9999px';
+      tempInput.style.top = '-9999px';
+      document.body.appendChild(tempInput);
+      tempInput.onchange = (event) => {
+        const files = (event.target as HTMLInputElement).files;
+        if (files && files.length > 0) {
+          const file = files[0];
+          console.log("File selected (fallback):", file.name);
+          setSelectedFile(file);
+          onFileSelect(file);
+        }
+        document.body.removeChild(tempInput);
+      };
+      tempInput.click();
+    }
+  }, [onFileSelect]);
 
   const sendFile = useCallback(
     async (file: File, connection: Peer.DataConnection) => {
@@ -242,17 +298,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
           break;
 
         case "FIST":
-          if (showFileSelector && availableFiles.length > 0) {
-            // Select the currently highlighted file
-            const selectedFile =
-              availableFiles[fileSelectorIndex % availableFiles.length];
-            console.log("File selected with fist:", selectedFile.name);
-            setSelectedFile(selectedFile);
-            onFileSelect(selectedFile);
-            setShowFileSelector(false);
-          } else {
-            setShowFileSelector(true);
-          }
+          // Open file picker
+          openFilePicker();
           break;
 
         case "OK_SIGN":
@@ -285,15 +332,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       }
     },
     [
-      availableFiles,
       connectionStatus,
       connections,
-      fileSelectorIndex,
       onFileSelect,
       peerId,
       selectedFile,
       sendFile,
-      showFileSelector,
     ],
   );
 
@@ -301,16 +345,18 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     <div className="min-h-screen bg-gray-900 text-white">
       {/* QR Code - Centered modal matching website design */}
       {showQRModal && connectionStatus !== "connected" && peerId && (
-        <div 
+        <div
           className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setShowQRModal(false)}
         >
-          <div 
+          <div
             className="bg-gray-800 text-white p-4 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center">
-              <h3 className="text-base font-semibold mb-3">Connect Your Phone</h3>
+              <h3 className="text-base font-semibold mb-3">
+                Connect Your Phone
+              </h3>
               <QRDisplay
                 value={`http://${currentHost}/connect?peer=${peerId}`}
                 size={200}
@@ -327,18 +373,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
         </div>
       )}
 
-      {/* File Selector Modal */}
-      <FileSelector
-        isVisible={showFileSelector}
-        selectedIndex={fileSelectorIndex}
-        onSelect={(file) => {
-          setSelectedFile(file);
-          onFileSelect(file);
-          setShowFileSelector(false);
-        }}
-        onClose={() => setShowFileSelector(false)}
-        onFilesChange={setAvailableFiles}
-      />
+      
 
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-gray-900/90 backdrop-blur p-4">
@@ -358,9 +393,11 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
           </div>
           <div className="flex items-center gap-4">
             {selectedFile && (
-              <span className="text-sm bg-gray-800 px-3 py-1 rounded">
-                {selectedFile.name}
-              </span>
+              <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded">
+                <span className="text-sm truncate max-w-48">
+                  {selectedFile.name}
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -375,11 +412,12 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
               <GestureDetector
                 onGestureDetected={handleGestureDetected}
                 isDetecting={true}
+                currentGesture={currentGesture}
               />
             </div>
 
             {/* Right: Gesture Controls */}
-            <div className="lg:w-96 bg-gray-800 rounded-lg p-6">
+            <div className="lg:w-[26rem] bg-gray-800 rounded-lg p-6">
               <div className="grid grid-cols-1 gap-4 text-sm">
                 <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
                   <span className="text-2xl">☝️</span>
@@ -404,13 +442,29 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-gray-700 rounded-lg">
-                <p className="text-sm text-gray-400 text-center">
-                  Current gesture:{" "}
-                  <span className="text-white font-medium">
-                    {currentGesture || "none"}
-                  </span>
-                </p>
+              {/* Selected file thumbnail display */}
+              <div className="mt-6 p-2 bg-gray-700 rounded-lg">
+                <div className="flex flex-col items-center justify-center">
+                  {selectedFile ? (
+                    <div className="flex justify-center w-full">
+                      {imageUrl ? (
+                        <img 
+                          src={imageUrl} 
+                          alt={selectedFile.name}
+                          className="w-full h-full max-w-56 max-h-56 rounded-lg object-contain border border-gray-600"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
+                          <span className="text-lg font-bold text-white">
+                            {selectedFile.name.split('.').pop()?.toUpperCase().slice(0, 3) || 'FILE'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-sm">No File Selected</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

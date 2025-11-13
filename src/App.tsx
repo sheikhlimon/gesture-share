@@ -53,18 +53,29 @@ function App() {
               <span className="text-2xl">👋</span>
             </div>
           </div>
-          
+
           {/* App title */}
           <h1 className="text-3xl font-bold text-white mb-2">Gesture Share</h1>
-          <p className="text-gray-400 mb-6">Initializing camera and hand detection...</p>
-          
+          <p className="text-gray-400 mb-6">
+            Initializing camera and hand detection...
+          </p>
+
           {/* Loading dots animation */}
           <div className="flex justify-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div
+              className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "0ms" }}
+            ></div>
+            <div
+              className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "150ms" }}
+            ></div>
+            <div
+              className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "300ms" }}
+            ></div>
           </div>
-          
+
           {/* Loading progress hint */}
           <div className="mt-8 text-sm text-gray-500">
             <p>Allow camera access when prompted</p>

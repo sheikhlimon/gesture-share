@@ -129,8 +129,8 @@ npm run type-check
 
 ### Deployment Automation
 - **GitHub Actions**: Automated CI/CD pipeline
-- **Docker**: Containerized deployment
-- **Nginx**: Production web server
+- **Static Hosting**: Deploy to Vercel, Netlify, or similar
+- **Nginx**: Production web server (optional)
 - **Environment Management**: Development, staging, production
 
 ## 📊 Development Metrics

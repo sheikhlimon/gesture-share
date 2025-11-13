@@ -92,9 +92,9 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
             </button>
             <div className="mt-8 text-sm text-gray-400">
               <p>Gesture controls:</p>
-              <p>👍 Thumbs up - Select file</p>
-              <p>✌️ Peace - Show QR</p>
-              <p>☝️ Point - Navigate</p>
+              <p>✊ Fist - Select highlighted file</p>
+              <p>☝️ Point Up - Show QR Code</p>
+              <p>👌 OK Sign - Send selected file</p>
             </div>
           </div>
         ) : (
@@ -137,7 +137,7 @@ export const FileSelector: React.FC<FileSelectorProps> = ({
               <div className="text-sm text-gray-400">
                 {files.length > 0 && (
                   <p>
-                    Press 👍 to select:{" "}
+                    Make ✊ fist to select:{" "}
                     {files[selectedIndex % files.length].name}
                   </p>
                 )}

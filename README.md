@@ -50,8 +50,8 @@ A desktop application that enables seamless file sharing between your computer a
 1. **Launch the app** and allow camera permissions
 2. **Point Up (☝️)** to display the QR code for mobile connection
 3. **Scan the QR code** with your mobile device to connect
-4. **Make a Fist (✊)** to open the file selector
-5. **Select a file** from the file browser
+4. **Make a Fist (✊)** to open the native file picker
+5. **Select a file** from your computer
 6. **Make an OK Sign (👌)** to send the file to your mobile device
 
 ## Project Structure
@@ -63,7 +63,6 @@ gesture-share/
 │   │   ├── App.tsx              # Main application component
 │   │   ├── DesktopView.tsx      # Desktop interface with gesture controls
 │   │   ├── GestureDetector.tsx   # Hand gesture detection logic
-│   │   ├── FileSelector.tsx     # File selection modal
 │   │   ├── QRDisplay.tsx        # QR code generation and display
 │   │   └── MobileView.tsx       # Mobile interface (simplified)
 │   ├── hooks/
@@ -84,9 +83,8 @@ gesture-share/
 
 ### Key Components
 
-- **GestureDetector**: Handles webcam capture and MediaPipe hand tracking
+- **GestureDetector**: Handles webcam capture and MediaPipe hand tracking with real-time gesture overlay
 - **DesktopView**: Main desktop interface with gesture controls and status
-- **FileSelector**: Modal for browsing and selecting files to share
 - **QRDisplay**: Generates and displays connection QR codes
 
 ## Technology Stack

@@ -7,11 +7,13 @@ interface GestureDetectorProps {
     position: { x: number; y: number },
   ) => void;
   isDetecting: boolean;
+  currentGesture?: string;
 }
 
 export const GestureDetector: React.FC<GestureDetectorProps> = ({
   onGestureDetected,
   isDetecting,
+  currentGesture,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const handLandmarkerRef = useRef<HandLandmarker | null>(null);
@@ -42,9 +44,8 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     const indexTip = landmarks[fingerTips[1]];
 
     // Thumb is extended if tip is significantly above IP joint and to the side
-    const thumbUp = 
-      (thumbTip.y < thumbIp.y - 0.04) && 
-      (Math.abs(thumbTip.x - thumbMcp.x) > 0.08);
+    const thumbUp =
+      thumbTip.y < thumbIp.y - 0.04 && Math.abs(thumbTip.x - thumbMcp.x) > 0.08;
 
     fingerStates.push(thumbUp);
     if (thumbUp) extendedFingers++;
@@ -53,7 +54,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     for (let i = 1; i < 5; i++) {
       const tip = landmarks[fingerTips[i]];
       const pip = landmarks[fingerPip[i]];
-      const mcp = landmarks[fingerMcp[i]];
 
       // Finger is extended if tip is significantly above PIP joint
       const isExtended = tip.y < pip.y - 0.06;
@@ -63,33 +63,38 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
     // OK Sign detection - thumb and index finger touching
     const thumbIndexDistance = Math.sqrt(
-      Math.pow(thumbTip.x - indexTip.x, 2) + 
-      Math.pow(thumbTip.y - indexTip.y, 2)
+      Math.pow(thumbTip.x - indexTip.x, 2) +
+        Math.pow(thumbTip.y - indexTip.y, 2),
     );
 
-    if (thumbIndexDistance < 0.05 && // thumb and index touching
-        !fingerStates[2] && !fingerStates[3] && !fingerStates[4]) { // other fingers down
+    if (
+      thumbIndexDistance < 0.05 && // thumb and index touching
+      !fingerStates[2] &&
+      !fingerStates[3] &&
+      !fingerStates[4]
+    ) {
+      // other fingers down
       return "OK_SIGN";
     }
 
     // Fist detection - very strict, no fingers should be extended
     if (extendedFingers === 0) return "FIST";
-    
+
     // Open hand detection - all fingers extended
     if (extendedFingers === 5) return "OPEN_HAND";
 
     // Point Up - only index finger extended and pointing up
     if (
-      !fingerStates[0] &&  // thumb not extended
-      fingerStates[1] &&   // index extended
-      !fingerStates[2] &&  // middle not extended
-      !fingerStates[3] &&  // ring not extended
-      !fingerStates[4]     // pinky not extended
+      !fingerStates[0] && // thumb not extended
+      fingerStates[1] && // index extended
+      !fingerStates[2] && // middle not extended
+      !fingerStates[3] && // ring not extended
+      !fingerStates[4] // pinky not extended
     ) {
       // Check if index finger is pointing up (y coordinate significantly higher than other parts)
       const indexMcp = landmarks[fingerMcp[1]];
       const indexPointingUp = indexTip.y < indexMcp.y - 0.1;
-      
+
       if (indexPointingUp) {
         return "POINT_UP";
       }
@@ -145,15 +150,15 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         const setupVideo = (retryCount = 0) => {
           if (videoRef.current) {
             const video = videoRef.current;
-            
+
             // Clear any existing srcObject
             if (video.srcObject) {
               const oldStream = video.srcObject as MediaStream;
-              oldStream.getTracks().forEach(track => track.stop());
+              oldStream.getTracks().forEach((track) => track.stop());
             }
-            
+
             video.srcObject = stream;
-            
+
             const attemptPlay = async () => {
               try {
                 if (video.srcObject === stream && stream.active) {
@@ -166,29 +171,33 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                 setTimeout(attemptPlay, 100);
               }
             };
-            
+
             // Multiple event handlers for better reliability
             const handleCanPlay = () => {
               console.log("Video can play");
               attemptPlay();
             };
-            
+
             const handleLoadedMetadata = () => {
               console.log("Video metadata loaded");
               attemptPlay();
             };
-            
+
             const handleLoadStart = () => {
               console.log("Video load started");
             };
-            
-            video.addEventListener('canplay', handleCanPlay, { once: true });
-            video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
-            video.addEventListener('loadstart', handleLoadStart, { once: true });
-            
+
+            video.addEventListener("canplay", handleCanPlay, { once: true });
+            video.addEventListener("loadedmetadata", handleLoadedMetadata, {
+              once: true,
+            });
+            video.addEventListener("loadstart", handleLoadStart, {
+              once: true,
+            });
+
             // Initial play attempt
             attemptPlay();
-            
+
             // Enhanced keep-alive mechanism
             const keepVideoAlive = setInterval(() => {
               if (video.paused && stream.active) {
@@ -196,13 +205,15 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                 attemptPlay();
               }
             }, 1000);
-            
+
             // Store for cleanup
             video.dataset.keepAliveId = keepVideoAlive.toString();
-            
           } else {
-            if (retryCount < 50) { // Max 5 seconds of retries
-              console.log(`Video ref not available, retrying... (${retryCount + 1}/50)`);
+            if (retryCount < 50) {
+              // Max 5 seconds of retries
+              console.log(
+                `Video ref not available, retrying... (${retryCount + 1}/50)`,
+              );
               setTimeout(() => setupVideo(retryCount + 1), 100);
             } else {
               console.error("Failed to find video element after 5 seconds");
@@ -210,7 +221,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             }
           }
         };
-        
+
         // Start video setup with a small delay to ensure DOM is ready
         setTimeout(() => setupVideo(), 200);
 
@@ -345,6 +356,16 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     );
   }
 
+  // Gesture emoji mapping
+  const getGestureEmoji = (gesture: string): string => {
+    switch (gesture) {
+      case "POINT_UP": return "☝️";
+      case "FIST": return "✊";
+      case "OK_SIGN": return "👌";
+      default: return "";
+    }
+  };
+
   return (
     <div className="relative w-full h-full">
       {/* Video element - mirrored for intuitive gesture control */}
@@ -354,6 +375,20 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         muted
         className="w-full h-full object-cover rounded-lg bg-black transform scale-x-[-1]"
       />
+      
+      {/* Gesture overlay - show current gesture in top right */}
+      {currentGesture && currentGesture !== "none" && (
+        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
+          <div className="flex items-center gap-2">
+            <span className="text-3xl">{getGestureEmoji(currentGesture)}</span>
+            <div className="text-white">
+              <p className="text-sm font-medium capitalize">
+                {currentGesture.replace("_", " ").toLowerCase()}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
