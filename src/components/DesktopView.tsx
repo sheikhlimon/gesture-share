@@ -423,11 +423,11 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         {/* QR Code - Centered modal matching website design */}
         {showQRModal && connectionStatus !== "connected" && peerId && (
           <div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={() => setShowQRModal(false)}
           >
             <div
-              className="bg-gray-800 text-white p-4 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full mx-4"
+              className="bg-gray-800 text-white p-4 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
@@ -455,7 +455,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         {/* File Picker Button Overlay */}
         {showFilePickerButton && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={() => {
               setShowFilePickerButton(false);
               // Clear countdown when modal is closed by clicking outside
@@ -467,7 +467,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             }}
           >
             <div
-              className="bg-gray-800 text-white p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4"
+              className="bg-gray-800 text-white p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
@@ -556,7 +556,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         {/* Main Content - Side by side layout */}
         <div className="pt-20 h-[calc(100vh-5rem)] p-4">
           <div className="max-w-7xl mx-auto h-full">
-            <div className="flex flex-col lg:flex-row gap-6 h-full">
+            <div className="flex flex-col md:flex-row gap-6 h-full">
               {/* Left: Webcam */}
               <div className="flex-1 bg-gray-800 rounded-2xl overflow-hidden shadow-2xl min-h-0 relative">
                 <GestureDetector
@@ -569,7 +569,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
               </div>
 
               {/* Right: Gesture Controls */}
-              <div className="lg:w-[26rem] lg:max-h-screen bg-gray-800 rounded-lg p-6 overflow-y-auto">
+              <div className="md:w-80 md:max-h-screen lg:w-[26rem] bg-gray-800 rounded-lg p-4 md:p-6 overflow-y-auto">
                 <div className="grid grid-cols-1 gap-4 text-base">
                   <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
                     <span className="text-2xl">☝️</span>
@@ -599,7 +599,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                   <div className="flex flex-col items-center justify-center">
                     {selectedFile ? (
                       <>
-                        <div className="flex justify-center w-56 h-56">
+                        <div className="flex justify-center w-48 h-48 md:w-56 md:h-56">
                           {imageUrl ? (
                             <img
                               src={imageUrl}
@@ -607,8 +607,8 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                               className="w-full h-full rounded-lg object-contain border border-gray-600"
                             />
                           ) : (
-                            <div className="w-24 h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
-                              <span className="text-lg font-bold text-white">
+                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
+                              <span className="text-sm md:text-lg font-bold text-white">
                                 {selectedFile.name
                                   .split(".")
                                   .pop()
