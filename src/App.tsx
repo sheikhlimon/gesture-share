@@ -31,59 +31,19 @@ function App() {
 
   const initializeCameraAndDetection = useCallback(async () => {
     try {
-      // Actually request camera access to pre-warm it
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-            facingMode: "user",
-            frameRate: { ideal: 30, max: 60 },
-          },
-          audio: false,
-        });
+      // Skip camera pre-warming to avoid conflicts with GestureDetector
+      // Let the GestureDetector handle camera initialization directly
+      console.log("Skipping camera pre-warming - letting GestureDetector handle it");
+      setInitializationProgress((prev) => ({ ...prev, camera: true }));
 
-        // Stop the stream immediately to free it for the actual component
-        stream.getTracks().forEach((track) => track.stop());
-        setInitializationProgress((prev) => ({ ...prev, camera: true }));
-      } catch (cameraError) {
-        console.warn("Camera pre-warm failed, but continuing:", cameraError);
-        // Still mark as complete to allow app to continue
-        setInitializationProgress((prev) => ({ ...prev, camera: true }));
-      }
-
-      // Pre-load MediaPipe models
-      try {
-        const { FilesetResolver, HandLandmarker } = await import(
-          "@mediapipe/tasks-vision"
-        );
-        const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
-        );
-
-        // Pre-load hand landmarker model
-        await HandLandmarker.createFromOptions(vision, {
-          baseOptions: {
-            delegate: "GPU",
-            modelAssetPath:
-              "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-          },
-          runningMode: "VIDEO",
-          numHands: 1,
-        });
-
+      // Skip MediaPipe pre-loading to avoid conflicts
+      // Let the GestureDetector handle model loading
+      console.log("Skipping MediaPipe pre-loading - letting GestureDetector handle it");
+      setTimeout(() => {
         setInitializationProgress((prev) => ({ ...prev, handDetection: true }));
-      } catch (modelError) {
-        console.warn(
-          "Hand detection model pre-load failed, but continuing:",
-          modelError,
-        );
-        // Still mark as complete to allow app to continue
-        setInitializationProgress((prev) => ({ ...prev, handDetection: true }));
-      }
+      }, 300);
     } catch (error) {
-      console.error("Failed to pre-initialize camera/hand detection:", error);
-      // Still mark as complete to allow app to continue
+      console.error("Failed to initialize:", error);
       setInitializationProgress((prev) => ({
         ...prev,
         camera: true,

@@ -33,7 +33,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     if (shouldShowTip) {
       return (
         <div className="absolute top-4 left-4 bg-gray-800/80 backdrop-blur-lg border border-gray-600/50 rounded-xl px-4 py-3 shadow-xl flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <span className="text-3xl">✋</span>
+          <span className="text-2xl">✋</span>
           <span className="text-base font-medium text-gray-200 font-sans">
             Show open hand before each gesture for better detection
           </span>
@@ -291,84 +291,61 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         streamRef.current = stream;
 
-        // Set up video with enhanced retry mechanism
-        const setupVideo = (retryCount = 0) => {
-          if (videoRef.current) {
-            const video = videoRef.current;
+        // Set up video with improved initialization
+        const setupVideo = () => {
+          return new Promise<void>((resolve, reject) => {
+            // Wait for video ref to be available with timeout
+            const waitForVideo = (attempts = 0) => {
+              if (attempts > 30) { // 3 seconds max
+                reject(new Error("Video element not found after 3 seconds"));
+                return;
+              }
 
-            // Clear any existing srcObject
-            if (video.srcObject) {
-              const oldStream = video.srcObject as MediaStream;
-              oldStream.getTracks().forEach((track) => track.stop());
-            }
+              if (!videoRef.current) {
+                setTimeout(() => waitForVideo(attempts + 1), 100);
+                return;
+              }
 
-            video.srcObject = stream;
+              const video = videoRef.current;
+              
+              // Clear any existing srcObject
+              if (video.srcObject) {
+                const oldStream = video.srcObject as MediaStream;
+                oldStream.getTracks().forEach((track) => track.stop());
+              }
 
-            const attemptPlay = async () => {
-              try {
-                if (video.srcObject === stream && stream.active) {
+              // Set new stream
+              video.srcObject = stream;
+
+              // Wait for video to be ready
+              video.addEventListener('loadeddata', async () => {
+                try {
                   await video.play();
                   console.log("Video started successfully");
+                  resolve();
+                } catch (error) {
+                  console.error("Video play failed:", error);
+                  reject(error);
                 }
-              } catch (error) {
-                console.log("Video play failed, retrying...", error);
-                // Retry after a short delay
-                setTimeout(attemptPlay, 100);
-              }
+              }, { once: true });
+
+              // Fallback timeout
+              setTimeout(() => {
+                reject(new Error("Video loading timeout"));
+              }, 5000);
             };
 
-            // Multiple event handlers for better reliability
-            const handleCanPlay = () => {
-              console.log("Video can play");
-              attemptPlay();
-            };
-
-            const handleLoadedMetadata = () => {
-              console.log("Video metadata loaded");
-              attemptPlay();
-            };
-
-            const handleLoadStart = () => {
-              console.log("Video load started");
-            };
-
-            video.addEventListener("canplay", handleCanPlay, { once: true });
-            video.addEventListener("loadedmetadata", handleLoadedMetadata, {
-              once: true,
-            });
-            video.addEventListener("loadstart", handleLoadStart, {
-              once: true,
-            });
-
-            // Initial play attempt
-            attemptPlay();
-
-            // Enhanced keep-alive mechanism
-            const keepVideoAlive = setInterval(() => {
-              if (video.paused && stream.active) {
-                console.log("Video paused, restarting...");
-                attemptPlay();
-              }
-            }, 1000);
-
-            // Store for cleanup
-            video.dataset.keepAliveId = keepVideoAlive.toString();
-          } else {
-            if (retryCount < 50) {
-              // Max 5 seconds of retries
-              console.log(
-                `Video ref not available, retrying... (${retryCount + 1}/50)`,
-              );
-              setTimeout(() => setupVideo(retryCount + 1), 100);
-            } else {
-              console.error("Failed to find video element after 5 seconds");
-              setError("Failed to initialize video element");
-            }
-          }
+            waitForVideo();
+          });
         };
 
-        // Start video setup with a small delay to ensure DOM is ready
-        setTimeout(() => setupVideo(), 200);
+        // Initialize video with proper error handling
+        try {
+          await setupVideo();
+        } catch (videoError) {
+          console.error("Video initialization failed:", videoError);
+          throw videoError;
+        }
 
         // Initialize HandLandmarker with tasks-vision
         const vision = await FilesetResolver.forVisionTasks(
@@ -683,7 +660,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       {currentGesture && currentGesture !== "none" && (
         <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
           <div className="flex items-center gap-2">
-            <span className="text-3xl">{getGestureEmoji(currentGesture)}</span>
+            <span className="text-2xl">{getGestureEmoji(currentGesture)}</span>
             <div className="text-white">
               <p className="text-sm font-medium capitalize">
                 {currentGesture.replace("_", " ").toLowerCase()}
