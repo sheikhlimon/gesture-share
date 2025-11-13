@@ -200,21 +200,30 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             );
 
             // Handle different permission errors
-            if (mediaError instanceof Error && mediaError.name === "NotAllowedError") {
+            if (
+              mediaError instanceof Error &&
+              mediaError.name === "NotAllowedError"
+            ) {
               // User denied permission - don't retry automatically
               setError(
                 "Camera permission denied. Please allow camera access and refresh the page.",
               );
               setIsLoading(false);
               return;
-            } else if (mediaError instanceof Error && mediaError.name === "NotFoundError") {
+            } else if (
+              mediaError instanceof Error &&
+              mediaError.name === "NotFoundError"
+            ) {
               // No camera found
               setError(
                 "No camera detected. Please connect a camera and refresh the page.",
               );
               setIsLoading(false);
               return;
-            } else if (mediaError instanceof Error && mediaError.name === "NotReadableError") {
+            } else if (
+              mediaError instanceof Error &&
+              mediaError.name === "NotReadableError"
+            ) {
               // Camera is already in use
               if (retryCount < maxRetries - 1) {
                 console.log("Camera in use, retrying after delay...");

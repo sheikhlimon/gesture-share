@@ -23,5 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# Goose memory and workspace - keep hidden in git but allow for local development
-# .goose/
+# Goose memory and workspace
+.goose/
+.goosehints

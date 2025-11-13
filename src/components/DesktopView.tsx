@@ -420,7 +420,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
 
     return (
       <div className="min-h-screen bg-gray-900 text-white">
-          {/* QR Code - Centered modal matching website design */}
+        {/* QR Code - Centered modal matching website design */}
         {showQRModal && connectionStatus !== "connected" && peerId && (
           <div
             className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm"
@@ -647,11 +647,13 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             } border-2 rounded-2xl shadow-2xl p-4`}
           >
             <div className="flex items-start gap-3">
-              <div className={`flex-shrink-0 rounded-full p-2 ${
-                notification.type === "success"
-                  ? "bg-green-100 text-green-600"
-                  : "bg-red-100 text-red-600"
-              }`}>
+              <div
+                className={`flex-shrink-0 rounded-full p-2 ${
+                  notification.type === "success"
+                    ? "bg-green-100 text-green-600"
+                    : "bg-red-100 text-red-600"
+                }`}
+              >
                 {notification.type === "success" ? (
                   <svg
                     className="w-5 h-5"
@@ -683,26 +685,41 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm ${
-                  notification.type === "success" ? "text-green-800" : "text-red-800"
-                }`}>
+                <p
+                  className={`font-semibold text-sm ${
+                    notification.type === "success"
+                      ? "text-green-800"
+                      : "text-red-800"
+                  }`}
+                >
                   {notification.type === "success" ? "Success" : "Error"}
                 </p>
-                <p className={`text-sm mt-1 ${
-                  notification.type === "success" ? "text-green-600" : "text-red-600"
-                }`}>
+                <p
+                  className={`text-sm mt-1 ${
+                    notification.type === "success"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
                   {notification.message}
                 </p>
               </div>
               <button
-                onClick={() => setNotification(prev => ({ ...prev, show: false }))}
+                onClick={() =>
+                  setNotification((prev) => ({ ...prev, show: false }))
+                }
                 className={`flex-shrink-0 rounded-full p-1 transition-colors ${
                   notification.type === "success"
                     ? "hover:bg-green-100 text-green-400"
                     : "hover:bg-red-100 text-red-400"
                 }`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -712,14 +729,22 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                 </svg>
               </button>
             </div>
-            
+
             {/* Auto-dismiss indicator */}
-            <div className={`mt-3 flex items-center gap-2 text-xs ${
-              notification.type === "success" ? "text-green-600" : "text-red-600"
-            }`}>
-              <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                notification.type === "success" ? "bg-green-500" : "bg-red-500"
-              }`} />
+            <div
+              className={`mt-3 flex items-center gap-2 text-xs ${
+                notification.type === "success"
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              <div
+                className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  notification.type === "success"
+                    ? "bg-green-500"
+                    : "bg-red-500"
+                }`}
+              />
               <span>Auto-dismissing in 4 seconds</span>
             </div>
           </div>
