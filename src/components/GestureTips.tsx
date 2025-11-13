@@ -14,27 +14,25 @@ const GestureTips: React.FC<GestureTipsProps> = ({
     return null;
   }
 
-  // Show pro tip when idle (no active gesture)
+  // Show pro tip when no action gesture is detected
+  // Action gestures: POINT_UP, FIST, PEACE_SIGN
   const isActionGesture = currentGesture === "POINT_UP" || 
                          currentGesture === "FIST" || 
                          currentGesture === "PEACE_SIGN";
 
   if (!isActionGesture) {
     return (
-      <div className="absolute top-4 left-4 z-20 animate-pulse">
-        <div className="bg-white/95 backdrop-blur-lg border border-white/30 rounded-2xl p-3 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 max-w-[280px]">
-          <div className="text-2xl animate-pulse">
-            ✋
-          </div>
-          <div className="text-sm font-medium text-gray-700">
-            <span className="font-semibold text-gray-900">Pro Tip:</span> Show open hand before each gesture for better detection
-          </div>
+      <div className="absolute top-4 right-4 z-20 animate-in slide-in-from-top-2 duration-300">
+        <div className="bg-white/95 backdrop-blur-md border border-white/20 rounded-xl px-3 py-2 shadow-lg flex items-center gap-2 max-w-xs">
+          <span className="text-lg">✋</span>
+          <span className="text-sm text-gray-700">
+            Show open hand before each gesture for better detection
+          </span>
         </div>
       </div>
     );
   }
 
-  // Don't show anything during active gesture detection
   return null;
 };
 
