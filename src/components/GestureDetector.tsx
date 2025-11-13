@@ -559,47 +559,72 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
   // Set up video stream when stream becomes available
   useEffect(() => {
-    const stream = streamRef.current;
-    const video = videoRef.current;
-    if (!stream) {
-      return;
-    }
-
+    let timeoutId: NodeJS.Timeout | null = null;
+    
     const setupVideo = () => {
+      const stream = streamRef.current;
       const currentVideo = videoRef.current;
-      if (!currentVideo) {
-        return;
+      
+      if (!stream || !currentVideo) {
+        return false; // Not ready yet
       }
+      
+      // Check if already set up
+      if (currentVideo.srcObject === stream) {
+        return true; // Already set up
+      }
+      
+      console.log("Setting up video stream");
       
       // Set the stream to the video element
       currentVideo.srcObject = stream;
       
+      // Set video dimensions to prevent MediaPipe warning
+      currentVideo.width = 640;
+      currentVideo.height = 480;
+      
       // Try to play the video
-      currentVideo.play().catch((error) => {
+      currentVideo.play().then(() => {
+        console.log("Video playback started successfully");
+      }).catch((error) => {
         console.warn("Video autoplay failed:", error);
       });
+      
+      return true; // Setup complete
+    };
+
+    // Function to keep trying until setup is complete or timeout
+    const attemptSetup = () => {
+      if (setupVideo()) {
+        // Success, stop trying
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      }
     };
 
     // Try immediately
-    setupVideo();
+    attemptSetup();
 
-    // Keep trying until video element is ready
-    const intervalId = setInterval(() => {
-      const currentVideo = videoRef.current;
-      if (currentVideo && !currentVideo.srcObject) {
-        setupVideo();
-      } else if (currentVideo?.srcObject) {
-        clearInterval(intervalId);
-      }
-    }, 50);
+    // Keep trying every 100ms for up to 10 seconds
+    timeoutId = setTimeout(() => {
+      console.error("Video setup timeout after 10 seconds");
+    }, 10000);
+
+    const intervalId = setInterval(attemptSetup, 100);
 
     return () => {
       clearInterval(intervalId);
-      // Cleanup when stream changes or component unmounts
-      if (video?.srcObject) {
-        const currentStream = video.srcObject as MediaStream;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      // Cleanup when component unmounts
+      const currentVideo = videoRef.current;
+      if (currentVideo?.srcObject) {
+        const currentStream = currentVideo.srcObject as MediaStream;
         currentStream.getTracks().forEach((track) => track.stop());
-        video.srcObject = null;
+        currentVideo.srcObject = null;
       }
     };
   }, []); // Empty dependency array - effect handles its own ref checking
