@@ -42,62 +42,101 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     let extendedFingers = 0;
     const fingerStates: boolean[] = [];
 
-    // Thumb detection - more lenient criteria for better detection
+    // Enhanced finger detection with more lenient and accurate thresholds
     const thumbTip = landmarks[fingerTips[0]];
     const thumbIp = landmarks[fingerPip[0]];
     const indexTip = landmarks[fingerTips[1]];
 
-    // Thumb is extended if tip is above IP joint (reduced threshold)
-    const thumbUp = thumbTip.y < thumbIp.y - 0.02;
-
+    // More accurate thumb detection using multiple reference points
+    const thumbUp = thumbTip.y < thumbIp.y - 0.015; // Reduced threshold for better detection
     fingerStates.push(thumbUp);
     if (thumbUp) extendedFingers++;
 
-    // Other fingers detection - more lenient criteria
+    // Enhanced finger detection with adaptive thresholds
     for (let i = 1; i < 5; i++) {
       const tip = landmarks[fingerTips[i]];
       const pip = landmarks[fingerPip[i]];
+      const mcp = landmarks[fingerMcp[i]];
 
-      // Finger is extended if tip is above PIP joint (reduced threshold)
-      const isExtended = tip.y < pip.y - 0.03;
+      // Use both PIP and MCP for more robust detection
+      const pipExtended = tip.y < pip.y - 0.025; // Reduced from 0.03
+      const mcpExtended = tip.y < mcp.y - 0.05;  // Additional check
+      const isExtended = pipExtended || mcpExtended;
+      
       fingerStates.push(isExtended);
       if (isExtended) extendedFingers++;
     }
 
-    // OK Sign detection - thumb and index finger touching (increased threshold)
+    // Debug logging for troubleshooting
+    if (extendedFingers > 0) {
+      console.log("Finger states:", {
+        thumb: fingerStates[0],
+        index: fingerStates[1], 
+        middle: fingerStates[2],
+        ring: fingerStates[3],
+        pinky: fingerStates[4],
+        extendedCount: extendedFingers
+      });
+    }
+
+    // Simplified OK Sign detection - focus on thumb-index proximity
     const thumbIndexDistance = Math.sqrt(
       Math.pow(thumbTip.x - indexTip.x, 2) +
         Math.pow(thumbTip.y - indexTip.y, 2),
     );
 
-    // Check if thumb and index are close and other fingers are down
-    if (
-      thumbIndexDistance < 0.08 && // Increased from 0.05 to 0.08 for easier detection
-      !fingerStates[2] && // middle down
-      !fingerStates[3] && // ring down
-      !fingerStates[4]    // pinky down
-    ) {
-      // Additional check: thumb should be somewhat extended for OK sign
-      if (thumbUp) {
-        return "OK_SIGN";
+    // Check for OK sign - thumb and index tips touching
+    if (thumbIndexDistance < 0.12) { // More generous threshold
+      // Other fingers should be relaxed (not fully extended)
+      const otherFingersExtended = fingerStates[2] || fingerStates[3] || fingerStates[4];
+      
+      if (!otherFingersExtended) {
+        // Additional check: thumb and index should be curled (not straight)
+        const indexPip = landmarks[fingerPip[1]];
+        const indexMcp = landmarks[fingerMcp[1]];
+        const indexLength = Math.sqrt(
+          Math.pow(indexTip.x - indexMcp.x, 2) +
+            Math.pow(indexTip.y - indexMcp.y, 2)
+        );
+        const indexPipToMcp = Math.sqrt(
+          Math.pow(indexPip.x - indexMcp.x, 2) +
+            Math.pow(indexPip.y - indexMcp.y, 2)
+        );
+        
+        // For OK sign, index finger should be curled (PIP closer to MCP than tip)
+        const indexCurled = indexPipToMcp > indexLength * 0.3;
+        
+        if (indexCurled) {
+          console.log("OK_SIGN detected", { thumbIndexDistance, extendedFingers, fingerStates });
+          return "OK_SIGN";
+        }
       }
     }
 
-    // Fist detection - allow very minimal finger extension
-    if (extendedFingers <= 1) return "FIST";
-
-    // Point Up - only index finger extended and pointing up
-    if (
-      fingerStates[1] && // index extended
-      extendedFingers === 1 // only index finger extended
-    ) {
-      // Check if index finger is pointing up (reduced threshold)
-      const indexMcp = landmarks[fingerMcp[1]];
-      const indexPointingUp = indexTip.y < indexMcp.y - 0.08;
-
-      if (indexPointingUp) {
-        return "POINT_UP";
+    // Real-world Point Up detection - prioritize this over fist
+    if (fingerStates[1]) { // index finger extended
+      // Check if index finger is pointing upward relative to hand orientation
+      const wrist = landmarks[0]; // Wrist landmark
+      const indexVector = {
+        x: indexTip.x - wrist.x,
+        y: indexTip.y - wrist.y
+      };
+      
+      // Calculate angle of index finger pointing up
+      const indexAngle = Math.atan2(indexVector.y, indexVector.x);
+      const pointingUp = indexAngle < -Math.PI/4; // 45+ degrees (more lenient)
+      
+      if (pointingUp) {
+        // For point up, allow thumb to be extended (common) but other fingers should be down
+        if (extendedFingers <= 2) { // Index + optionally thumb
+          return "POINT_UP";
+        }
       }
+    }
+
+    // Enhanced Fist detection - stricter criteria after checking for point up
+    if (extendedFingers <= 1) { // Only allow 0 or 1 finger for real fist
+      return "FIST";
     }
 
     // Open hand detection - all fingers extended
@@ -253,11 +292,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         setIsLoading(false);
 
-        // Start processing frames with rate limiting and gesture stability
+        // Start processing frames with improved rate limiting and gesture stability
         const processFrame = async () => {
-          // Rate limit to ~5 FPS for more stable detection
+          // Rate limit to ~10 FPS for better responsiveness (reduced from 5 FPS)
           const now = Date.now();
-          if (now - lastProcessTimeRef.current < 200) {
+          if (now - lastProcessTimeRef.current < 100) {
             animationFrameRef.current = requestAnimationFrame(processFrame);
             return;
           }
@@ -300,9 +339,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               const gesture = classifyGesture(landmarks);
               const position = { x: landmarks[0].x, y: landmarks[0].y };
 
-              // Add to gesture history
+              // Add to gesture history - smaller window for faster response
               gestureHistoryRef.current.push(gesture);
-              if (gestureHistoryRef.current.length > 8) {
+              if (gestureHistoryRef.current.length > 6) {
                 gestureHistoryRef.current.shift();
               }
 
@@ -312,16 +351,16 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
               // Reset other gesture counts that haven't been seen recently
               for (const [key] of gestureCountRef.current.entries()) {
-                if (key !== gesture && !gestureHistoryRef.current.slice(-4).includes(key)) {
+                if (key !== gesture && !gestureHistoryRef.current.slice(-3).includes(key)) {
                   gestureCountRef.current.delete(key);
                 }
               }
 
-              // Determine stable gesture (need 4+ consistent detections)
+              // Determine stable gesture (reduced from 4 to 3 for faster response)
               const stableCount = gestureCountRef.current.get(gesture) || 0;
               let newStableGesture = stableGestureRef.current;
 
-              if (stableCount >= 4) {
+              if (stableCount >= 3) {
                 // Only change if different from current stable gesture
                 if (gesture !== stableGestureRef.current) {
                   newStableGesture = gesture;

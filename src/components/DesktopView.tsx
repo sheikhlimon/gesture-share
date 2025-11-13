@@ -190,7 +190,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   }, [connections.size]);
 
   const [showFilePickerButton, setShowFilePickerButton] = useState(false);
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(0);
   const countdownIntervalRef = useRef<number | null>(null);
 
   const openFilePickerDirectly = useCallback(() => {
@@ -201,6 +201,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       clearInterval(countdownIntervalRef.current);
       countdownIntervalRef.current = null;
     }
+    setCountdown(0);
     
     // Create and trigger file input immediately (user activated)
     const fileInput = document.createElement('input');
@@ -220,14 +221,14 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       }
       document.body.removeChild(fileInput);
       setShowFilePickerButton(false);
-      setCountdown(10);
+      setCountdown(0);
     };
 
     fileInput.oncancel = () => {
       console.log("File picker cancelled");
       document.body.removeChild(fileInput);
       setShowFilePickerButton(false);
-      setCountdown(10);
+      setCountdown(0);
     };
 
     document.body.appendChild(fileInput);
@@ -238,6 +239,13 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
 
   const triggerFilePickerFlow = useCallback(() => {
     console.log("=== Triggering file picker flow ===");
+    
+    // Clear any existing countdown first
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    
     // Show the button overlay for user to click
     setShowFilePickerButton(true);
     setCountdown(10);
@@ -252,7 +260,8 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
             countdownIntervalRef.current = null;
           }
           setShowFilePickerButton(false);
-          return 10;
+          setCountdown(0);
+          return 0;
         }
         return prev - 1;
       });
@@ -418,7 +427,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       {showFilePickerButton && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowFilePickerButton(false)}
+          onClick={() => {
+            setShowFilePickerButton(false);
+            // Clear countdown when modal is closed by clicking outside
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+            setCountdown(0);
+          }}
         >
           <div
             className="bg-gray-800 text-white p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4"
