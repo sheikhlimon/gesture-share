@@ -24,9 +24,12 @@ interface FileEnd {
   fileId: string;
 }
 
-// Get local IP
-const getLocalIP = async (): Promise<string> => {
-  const webrtcIP = await new Promise<string>((resolve) => {
+// Get the actual network IP for mobile connection
+const getNetworkIP = async (): Promise<string> => {
+  const port = window.location.port || "5174";
+
+  // Try to get the local network IP
+  const localIP = await new Promise<string>((resolve) => {
     try {
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -42,7 +45,11 @@ const getLocalIP = async (): Promise<string> => {
             for (const line of lines) {
               if (line.includes("candidate:") && line.includes("typ host")) {
                 const match = line.match(/(\d+\.\d+\.\d+\.\d+)/);
-                if (match) {
+                if (
+                  match &&
+                  !match[0].startsWith("127.") &&
+                  !match[0].startsWith("0.")
+                ) {
                   resolve(match[0]);
                   return;
                 }
@@ -56,19 +63,21 @@ const getLocalIP = async (): Promise<string> => {
     }
   });
 
-  if (webrtcIP) return webrtcIP;
-
-  if (
-    window.location.hostname !== "localhost" &&
-    window.location.hostname !== "127.0.0.1"
-  ) {
-    return window.location.hostname;
+  // If we got a valid local IP, use it
+  if (localIP) {
+    return `${localIP}:${port}`;
   }
 
-  return (
-    window.prompt("Enter your local IP address (e.g., 192.168.1.100):") ||
-    "localhost"
+  // Fallback to manual input if we can't detect the IP
+  const manualIP = window.prompt(
+    "Enter your computer's IP address (e.g., 192.168.1.100):",
   );
+  if (manualIP) {
+    return `${manualIP}:${port}`;
+  }
+
+  // Last resort - show localhost (won't work for mobile but allows testing)
+  return `localhost:${port}`;
 };
 
 interface DesktopViewProps {
@@ -77,7 +86,7 @@ interface DesktopViewProps {
 
 export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const [peerId, setPeerId] = useState("");
-  const [isDetecting, setIsDetecting] = useState(true); // Start with detection on
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "connecting" | "connected"
@@ -86,7 +95,7 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     Map<string, Peer.DataConnection>
   >(new Map());
   const [currentGesture, setCurrentGesture] = useState<string>("");
-  const [localIP, setLocalIP] = useState<string>("localhost");
+  const [currentHost, setCurrentHost] = useState<string>("");
   const [showQRModal, setShowQRModal] = useState(false);
   const [showFileSelector, setShowFileSelector] = useState(false);
   const [fileSelectorIndex, setFileSelectorIndex] = useState(0);
@@ -95,19 +104,30 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const peerRef = useRef<Peer.Peer | null>(null);
 
   useEffect(() => {
-    getLocalIP().then((ip) => setLocalIP(ip));
+    getNetworkIP().then((ip) => {
+      setCurrentHost(ip);
+    });
   }, []);
 
+  // Close QR modal when connection is established
   useEffect(() => {
-    if (peerRef.current) return;
+    if (connectionStatus === "connected" && showQRModal) {
+      setShowQRModal(false);
+    }
+  }, [connectionStatus, showQRModal]);
+
+  useEffect(() => {
+    // Only create PeerJS connection if this component is visible
+    if (peerRef.current || document.hidden) return;
 
     try {
       setConnectionStatus("connecting");
-      const newPeer = new Peer.Peer({
+      const newPeer = new Peer.Peer("", {
         config: {
           iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
           ],
         },
       });
@@ -119,8 +139,15 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
       });
 
       newPeer.on("connection", (conn) => {
-        setConnections((prev) => new Map(prev).set(conn.peer, conn));
-        setConnectionStatus("connected");
+        console.log("Desktop received connection from:", conn.peer);
+
+        // Answer the connection with reliable option
+        conn.on("open", () => {
+          console.log("Desktop connection opened to:", conn.peer);
+          setConnections((prev) => new Map(prev).set(conn.peer, conn));
+          setConnectionStatus("connected");
+          setShowQRModal(false); // Close QR modal when connected
+        });
 
         conn.on("close", () => {
           setConnections((prev) => {
@@ -152,15 +179,20 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
 
   const sendFile = useCallback(
     async (file: File, connection: Peer.DataConnection) => {
+      console.log("=== sendFile called ===");
+      console.log("File:", file.name, "Size:", file.size);
+      console.log("Connection:", connection.peer, "Open:", connection.open);
       try {
         const fileId = Date.now().toString();
-        connection.send({
+        const fileStart = {
           type: "file-start",
           fileId,
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type,
-        } as FileStart);
+        } as FileStart;
+        console.log("Sending file-start:", fileStart);
+        connection.send(fileStart);
 
         const chunkSize = 16384;
         const buffer = await file.arrayBuffer();
@@ -193,20 +225,28 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const handleGestureDetected = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async (gesture: string, _position: { x: number; y: number }) => {
+      console.log("DesktopView handleGestureDetected:", gesture);
       setCurrentGesture(gesture);
 
       switch (gesture) {
         case "PEACE":
-          if (connectionStatus !== "connected" && peerId) {
+          console.log(
+            "Peace gesture detected, connection status:",
+            connectionStatus,
+            "peerId:",
+            peerId,
+          );
+          if (connectionStatus !== "connected") {
             setShowQRModal(true);
           }
           break;
 
-        case "THUMBS_UP":
+        case "FIST":
           if (showFileSelector && availableFiles.length > 0) {
             // Select the currently highlighted file
             const selectedFile =
               availableFiles[fileSelectorIndex % availableFiles.length];
+            console.log("File selected with fist:", selectedFile.name);
             setSelectedFile(selectedFile);
             onFileSelect(selectedFile);
             setShowFileSelector(false);
@@ -222,51 +262,72 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
           }
           break;
 
-        case "send":
+        case "THUMBS_UP":
+          console.log("=== THUMBS UP DETECTED ===");
+          console.log("Selected file:", selectedFile?.name);
+          console.log("Selected file size:", selectedFile?.size);
+          console.log("Connections size:", connections.size);
+          console.log("Available connections:", Array.from(connections.keys()));
+
           if (selectedFile && connections.size > 0) {
             const firstConnection = Array.from(connections.values())[0];
             if (firstConnection) {
+              console.log("Connection object:", firstConnection);
+              console.log("Connection peer:", firstConnection.peer);
+              console.log("Connection open:", firstConnection.open);
+              console.log("Trying to send file...");
               await sendFile(selectedFile, firstConnection);
+            } else {
+              console.log("ERROR: First connection is null/undefined");
+            }
+          } else {
+            if (!selectedFile) {
+              console.log("ERROR: No file selected");
+            }
+            if (connections.size === 0) {
+              console.log("ERROR: No active connections");
             }
           }
           break;
       }
     },
     [
-      selectedFile,
-      connections,
-      sendFile,
+      availableFiles,
       connectionStatus,
+      connections,
+      fileSelectorIndex,
       onFileSelect,
       peerId,
+      selectedFile,
+      sendFile,
       showFileSelector,
-      availableFiles,
-      fileSelectorIndex,
     ],
   );
 
-  const toggleDetection = useCallback(() => {
-    setIsDetecting((prev) => !prev);
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* QR Modal */}
-      {showQRModal && peerId && connectionStatus !== "connected" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="bg-gray-800 p-8 rounded-2xl max-w-sm w-full mx-4">
-            <button
-              onClick={() => setShowQRModal(false)}
-              className="absolute top-4 right-4 text-white hover:text-gray-300"
-            >
-              ✕
-            </button>
-            <QRDisplay
-              value={`http://${localIP}:5173/connect?peer=${peerId}`}
-              title=""
-              className=""
-            />
-            <p className="text-center mt-4 text-gray-300">Scan to connect</p>
+      {/* QR Code - Centered modal matching website design */}
+      {showQRModal && connectionStatus !== "connected" && peerId && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-gray-800 text-white p-6 rounded-2xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-4">Connect Your Phone</h3>
+              <QRDisplay
+                value={`http://${currentHost}/connect?peer=${peerId}`}
+              />
+              <p className="mt-4 text-gray-400 text-sm">
+                Status:{" "}
+                <span className="font-medium text-white">
+                  {connectionStatus}
+                </span>
+              </p>
+              <button
+                onClick={() => setShowQRModal(false)}
+                className="mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -306,101 +367,64 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
                 {selectedFile.name}
               </span>
             )}
-            {connectionStatus !== "connected" && peerId && (
-              <button
-                onClick={() => setShowQRModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded"
-              >
-                Show QR
-              </button>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Main Content - Webcam focused */}
-      <div className="pt-20 min-h-screen flex items-center justify-center">
-        <div className="max-w-4xl w-full mx-4">
-          {/* Central Webcam */}
-          <div className="relative bg-gray-800 rounded-2xl overflow-hidden shadow-2xl">
-            <GestureDetector
-              onGestureDetected={handleGestureDetected}
-              isDetecting={isDetecting}
-            />
-            <button
-              onClick={toggleDetection}
-              className={`absolute top-4 right-4 px-3 py-1 rounded ${
-                isDetecting ? "bg-blue-600" : "bg-gray-600"
-              }`}
-            >
-              {isDetecting ? "ON" : "OFF"}
-            </button>
+      {/* Main Content - Side by side layout */}
+      <div className="pt-20 min-h-screen p-4">
+        <div className="max-w-7xl mx-auto h-full">
+          <div className="flex flex-col lg:flex-row gap-6 h-full">
+            {/* Left: Webcam */}
+            <div className="flex-1 bg-gray-800 rounded-2xl overflow-hidden shadow-2xl min-h-0 relative">
+              <GestureDetector
+                onGestureDetected={handleGestureDetected}
+                isDetecting={true}
+              />
 
-            {/* Gesture Status Overlay */}
-            <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded">
-              <p className="text-white text-sm font-medium">
-                {currentGesture || "none"}
-              </p>
-            </div>
-          </div>
-
-          {/* Gesture Instructions */}
-          <div className="mt-8 bg-gray-800 rounded-lg p-6">
-            <h2 className="text-lg font-semibold mb-4">Gesture Controls</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">✌️</span>
-                <div>
-                  <p className="font-medium">Peace Sign</p>
-                  <p className="text-gray-400">Show QR Code</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">👍</span>
-                <div>
-                  <p className="font-medium">Thumbs Up</p>
-                  <p className="text-gray-400">Select File</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">✊→✋</span>
-                <div>
-                  <p className="font-medium">Grab & Release</p>
-                  <p className="text-gray-400">Send File</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-400">
-                Current gesture:{" "}
-                <span className="text-white font-medium">
+              {/* Gesture Status Overlay */}
+              <div className="absolute bottom-4 left-4 bg-black/70 px-3 py-2 rounded">
+                <p className="text-white text-sm font-medium">
                   {currentGesture || "none"}
-                </span>
-              </p>
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Quick Actions */}
-          <div className="mt-6 flex justify-center gap-4">
-            <button
-              onClick={() => setShowFileSelector(true)}
-              className="px-6 py-3 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center gap-2"
-            >
-              <span>📁</span> Select File
-            </button>
-            {selectedFile && connections.size > 0 && (
-              <button
-                onClick={() => {
-                  const firstConnection = Array.from(connections.values())[0];
-                  if (firstConnection) {
-                    sendFile(selectedFile, firstConnection);
-                  }
-                }}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2"
-              >
-                <span>📤</span> Send File
-              </button>
-            )}
+            {/* Right: Gesture Controls */}
+            <div className="lg:w-96 bg-gray-800 rounded-lg p-6">
+              <div className="grid grid-cols-1 gap-4 text-sm">
+                <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                  <span className="text-2xl">✌️</span>
+                  <div>
+                    <p className="font-medium">Peace Sign</p>
+                    <p className="text-gray-400">Show QR Code</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                  <span className="text-2xl">✊</span>
+                  <div>
+                    <p className="font-medium">Fist</p>
+                    <p className="text-gray-400">Open File Menu</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg">
+                  <span className="text-2xl">👍</span>
+                  <div>
+                    <p className="font-medium">Thumbs Up</p>
+                    <p className="text-gray-400">Send Selected File</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-gray-700 rounded-lg">
+                <p className="text-sm text-gray-400 text-center">
+                  Current gesture:{" "}
+                  <span className="text-white font-medium">
+                    {currentGesture || "none"}
+                  </span>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
