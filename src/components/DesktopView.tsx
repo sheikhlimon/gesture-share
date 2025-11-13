@@ -129,10 +129,11 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
   }, [selectedFile]);
 
   useEffect(() => {
-    // Only create PeerJS connection if this component is visible
-    if (peerRef.current || document.hidden) return;
+    // Only create PeerJS connection once
+    if (peerRef.current) return;
 
     try {
+      console.log("Initializing PeerJS connection...");
       setConnectionStatus("connecting");
       const newPeer = new Peer.Peer("", {
         config: {
@@ -146,6 +147,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
       peerRef.current = newPeer;
 
       newPeer.on("open", (id) => {
+        console.log("PeerJS opened with ID:", id);
         setPeerId(id);
         setConnectionStatus("idle");
       });
@@ -153,7 +155,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
       newPeer.on("connection", (conn) => {
         console.log("Desktop received connection from:", conn.peer);
 
-        // Answer the connection with reliable option
+        // Answer the connection
         conn.on("open", () => {
           console.log("Desktop connection opened to:", conn.peer);
           setConnections((prev) => new Map(prev).set(conn.peer, conn));
@@ -176,11 +178,13 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
         });
       });
 
-      newPeer.on("error", () => {
+      newPeer.on("error", (error) => {
+        console.error("PeerJS error:", error);
         setConnectionStatus("idle");
       });
 
       return () => {
+        console.log("Cleaning up PeerJS connection...");
         if (peerRef.current) {
           peerRef.current.destroy();
           peerRef.current = null;
@@ -190,7 +194,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
       console.error("Peer initialization error:", error);
       setConnectionStatus("idle");
     }
-  }, [connections.size]);
+  }, []); // No dependencies - only run once
 
   const [showFilePickerButton, setShowFilePickerButton] = useState(false);
   const [countdown, setCountdown] = useState(0);
