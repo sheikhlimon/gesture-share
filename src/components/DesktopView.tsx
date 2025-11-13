@@ -308,25 +308,27 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
     <div className="min-h-screen bg-gray-900 text-white">
       {/* QR Code - Centered modal matching website design */}
       {showQRModal && connectionStatus !== "connected" && peerId && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="bg-gray-800 text-white p-6 rounded-2xl shadow-2xl border border-gray-700 max-w-sm w-full mx-4">
+        <div 
+          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowQRModal(false)}
+        >
+          <div 
+            className="bg-gray-800 text-white p-4 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="text-center">
-              <h3 className="text-lg font-semibold mb-4">Connect Your Phone</h3>
+              <h3 className="text-base font-semibold mb-3">Connect Your Phone</h3>
               <QRDisplay
                 value={`http://${currentHost}/connect?peer=${peerId}`}
+                size={200}
+                title=""
               />
-              <p className="mt-4 text-gray-400 text-sm">
+              <p className="mt-3 text-gray-400 text-xs">
                 Status:{" "}
                 <span className="font-medium text-white">
                   {connectionStatus}
                 </span>
               </p>
-              <button
-                onClick={() => setShowQRModal(false)}
-                className="mt-4 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                Close
-              </button>
             </div>
           </div>
         </div>
