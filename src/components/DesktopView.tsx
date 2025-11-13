@@ -191,45 +191,62 @@ export const DesktopView: React.FC<DesktopViewProps> = ({ onFileSelect }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const openFilePicker = useCallback(() => {
-    // Create a persistent file input
-    if (!fileInputRef.current) {
-      fileInputRef.current = document.createElement('input');
-      fileInputRef.current.type = 'file';
-      fileInputRef.current.accept = 'image/*,.pdf,.doc,.docx,.txt';
-      fileInputRef.current.onchange = (event) => {
-        const files = (event.target as HTMLInputElement).files;
-        if (files && files.length > 0) {
-          const file = files[0];
-          console.log("File selected:", file.name);
-          setSelectedFile(file);
-          onFileSelect(file);
-        }
-      };
+    console.log("=== Opening file picker ===");
+    
+    // Prevent multiple simultaneous file pickers
+    if (fileInputRef.current) {
+      console.log("File picker already exists, skipping");
+      return;
     }
-    // Try to trigger file picker
+
+    // Create a new file input
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*,.pdf,.doc,.docx,.txt';
+    
+    // Handle file selection
+    fileInput.onchange = (event) => {
+      const files = (event.target as HTMLInputElement).files;
+      if (files && files.length > 0) {
+        const file = files[0];
+        console.log("File selected:", file.name);
+        setSelectedFile(file);
+        onFileSelect(file);
+      }
+      // Clean up the input element
+      if (fileInput.parentNode) {
+        document.body.removeChild(fileInput);
+      }
+      fileInputRef.current = null;
+    };
+
+    // Handle cancellation (user closing picker without selecting)
+    fileInput.oncancel = () => {
+      console.log("File picker cancelled");
+      // Clean up the input element
+      if (fileInput.parentNode) {
+        document.body.removeChild(fileInput);
+      }
+      fileInputRef.current = null;
+    };
+
+    // Store reference and add to DOM
+    fileInputRef.current = fileInput;
+    fileInput.style.position = 'absolute';
+    fileInput.style.left = '-9999px';
+    fileInput.style.top = '-9999px';
+    document.body.appendChild(fileInput);
+
+    // Trigger the file picker
     try {
-      fileInputRef.current.click();
+      fileInput.click();
     } catch (error) {
-      console.error("File picker error:", error);
-      // Fallback: create a temporary input and trigger it
-      const tempInput = document.createElement('input');
-      tempInput.type = 'file';
-      tempInput.accept = 'image/*,.pdf,.doc,.docx,.txt';
-      tempInput.style.position = 'absolute';
-      tempInput.style.left = '-9999px';
-      tempInput.style.top = '-9999px';
-      document.body.appendChild(tempInput);
-      tempInput.onchange = (event) => {
-        const files = (event.target as HTMLInputElement).files;
-        if (files && files.length > 0) {
-          const file = files[0];
-          console.log("File selected (fallback):", file.name);
-          setSelectedFile(file);
-          onFileSelect(file);
-        }
-        document.body.removeChild(tempInput);
-      };
-      tempInput.click();
+      console.error("Failed to open file picker:", error);
+      // Clean up on error
+      if (fileInput.parentNode) {
+        document.body.removeChild(fileInput);
+      }
+      fileInputRef.current = null;
     }
   }, [onFileSelect]);
 
