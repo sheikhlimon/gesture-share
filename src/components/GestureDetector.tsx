@@ -34,9 +34,14 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       return (
         <div className="absolute top-4 left-4 bg-gray-800/80 backdrop-blur-lg border border-gray-600/50 rounded-xl px-4 py-3 shadow-xl flex items-center gap-3 max-w-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
           <span className="text-2xl">✋</span>
-          <span className="text-base font-medium text-gray-200 font-sans">
-            Show open hand before each gesture for better detection
-          </span>
+          <div className="text-gray-200 font-sans">
+            <span className="text-base font-medium block">
+              Show open hand before each gesture
+            </span>
+            <span className="text-xs text-gray-400 mt-1 block">
+              Keep hand 1-2 feet from camera, well-lit, and in frame
+            </span>
+          </div>
         </div>
       );
     }
@@ -50,6 +55,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0); // For UI display
+  const [handDetected, setHandDetected] = useState<boolean>(false);
+  const [debugGesture, setDebugGesture] = useState<string>("none");
+  const [confidence, setConfidence] = useState<number>(0);
   const previousGestureRef = useRef<string>("none");
   const lastProcessTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
@@ -84,7 +92,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     const indexTip = landmarks[fingerTips[1]];
 
     // More accurate thumb detection using multiple reference points
-    const thumbUp = thumbTip.y < thumbIp.y - 0.015; // Reduced threshold for better detection
+    const thumbUp = thumbTip.y < thumbIp.y - 0.01; // Even more reduced threshold for better detection
     fingerStates.push(thumbUp);
     if (thumbUp) extendedFingers++;
 
@@ -94,9 +102,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       const pip = landmarks[fingerPip[i]];
       const mcp = landmarks[fingerMcp[i]];
 
-      // Use both PIP and MCP for more robust detection
-      const pipExtended = tip.y < pip.y - 0.025; // Reduced from 0.03
-      const mcpExtended = tip.y < mcp.y - 0.05; // Additional check
+      // Use both PIP and MCP for more robust detection - made more lenient
+      const pipExtended = tip.y < pip.y - 0.015; // Reduced from 0.025 for better sensitivity
+      const mcpExtended = tip.y < mcp.y - 0.03; // Reduced from 0.05
       const isExtended = pipExtended || mcpExtended;
 
       fingerStates.push(isExtended);
@@ -402,6 +410,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               gestureHistoryRef.current = [];
               gestureCountRef.current.clear();
               stableGestureRef.current = "none";
+              setHandDetected(false);
+              setDebugGesture("none");
+              setConfidence(0);
 
               if (previousGestureRef.current !== "none") {
                 previousGestureRef.current = "none";
@@ -412,6 +423,15 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               const gesture = classifyGesture(landmarks);
               const position = { x: landmarks[0].x, y: landmarks[0].y };
 
+              // Update debug state
+              setHandDetected(true);
+              setDebugGesture(gesture);
+              
+              // Calculate confidence based on gesture consistency
+              const currentCount = gestureCountRef.current.get(gesture) || 0;
+              const confidenceScore = Math.min(currentCount / 3, 1); // Max confidence at 3 consistent detections
+              setConfidence(Math.round(confidenceScore * 100));
+
               // Add to gesture history - smaller window for faster response
               gestureHistoryRef.current.push(gesture);
               if (gestureHistoryRef.current.length > 6) {
@@ -419,7 +439,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               }
 
               // Count gesture occurrences in recent history
-              const currentCount = gestureCountRef.current.get(gesture) || 0;
               gestureCountRef.current.set(gesture, currentCount + 1);
 
               // Reset other gesture counts that haven't been seen recently
@@ -694,7 +713,21 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         
       />
       
-      {/* Debug overlay - shows if video is actually playing */}
+      {/* Debug overlay - shows detection status */}
+      <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${handDetected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <span className="text-white text-xs">
+            {handDetected ? 'Hand Detected' : 'No Hand'}
+          </span>
+          {handDetected && (
+            <span className="text-white text-xs">
+              | {debugGesture.replace('_', ' ')} ({confidence}%)
+            </span>
+          )}
+        </div>
+      </div>
+
       {!streamRef.current && (
         <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
           <p className="text-white text-sm">Waiting for camera stream...</p>
