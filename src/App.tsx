@@ -8,7 +8,7 @@ function App() {
   const [initializationProgress, setInitializationProgress] = useState({
     camera: false,
     handDetection: false,
-    deviceDetection: false
+    deviceDetection: false,
   });
   const initializationTimeoutRef = useRef<number | null>(null);
 
@@ -27,7 +27,7 @@ function App() {
     const isSmallScreen = window.innerWidth < 500;
     const isMobileDevice = isMobileBrowser || isSmallScreen;
     setIsMobile(isMobileDevice);
-    setInitializationProgress(prev => ({ ...prev, deviceDetection: true }));
+    setInitializationProgress((prev) => ({ ...prev, deviceDetection: true }));
   }, []);
 
   const initializeCameraAndDetection = useCallback(async () => {
@@ -43,23 +43,25 @@ function App() {
           },
           audio: false,
         });
-        
+
         // Stop the stream immediately to free it for the actual component
-        stream.getTracks().forEach(track => track.stop());
-        setInitializationProgress(prev => ({ ...prev, camera: true }));
+        stream.getTracks().forEach((track) => track.stop());
+        setInitializationProgress((prev) => ({ ...prev, camera: true }));
       } catch (cameraError) {
         console.warn("Camera pre-warm failed, but continuing:", cameraError);
         // Still mark as complete to allow app to continue
-        setInitializationProgress(prev => ({ ...prev, camera: true }));
+        setInitializationProgress((prev) => ({ ...prev, camera: true }));
       }
-      
+
       // Pre-load MediaPipe models
       try {
-        const { FilesetResolver, HandLandmarker } = await import("@mediapipe/tasks-vision");
-        const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
+        const { FilesetResolver, HandLandmarker } = await import(
+          "@mediapipe/tasks-vision"
         );
-        
+        const vision = await FilesetResolver.forVisionTasks(
+          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
+        );
+
         // Pre-load hand landmarker model
         await HandLandmarker.createFromOptions(vision, {
           baseOptions: {
@@ -70,28 +72,34 @@ function App() {
           runningMode: "VIDEO",
           numHands: 1,
         });
-        
-        setInitializationProgress(prev => ({ ...prev, handDetection: true }));
+
+        setInitializationProgress((prev) => ({ ...prev, handDetection: true }));
       } catch (modelError) {
-        console.warn("Hand detection model pre-load failed, but continuing:", modelError);
+        console.warn(
+          "Hand detection model pre-load failed, but continuing:",
+          modelError,
+        );
         // Still mark as complete to allow app to continue
-        setInitializationProgress(prev => ({ ...prev, handDetection: true }));
+        setInitializationProgress((prev) => ({ ...prev, handDetection: true }));
       }
-      
     } catch (error) {
       console.error("Failed to pre-initialize camera/hand detection:", error);
       // Still mark as complete to allow app to continue
-      setInitializationProgress(prev => ({ ...prev, camera: true, handDetection: true }));
+      setInitializationProgress((prev) => ({
+        ...prev,
+        camera: true,
+        handDetection: true,
+      }));
     }
   }, []);
 
   useEffect(() => {
     // Start initialization immediately - run only once on mount
     let isMounted = true;
-    
+
     const startInitialization = async () => {
       if (!isMounted) return;
-      
+
       detectDevice();
       await initializeCameraAndDetection();
     };
@@ -107,12 +115,13 @@ function App() {
 
     return () => {
       isMounted = false;
-      if (initializationTimeoutRef.current) {
-        clearTimeout(initializationTimeoutRef.current);
+      const currentTimeout = initializationTimeoutRef.current;
+      if (currentTimeout) {
+        clearTimeout(currentTimeout);
       }
       clearTimeout(maxTimeout);
     };
-  }, []); // Empty dependency array - run only once
+  }, [detectDevice, initializeCameraAndDetection]); // Added dependencies
 
   // Separate effect to check initialization progress
   useEffect(() => {
@@ -161,19 +170,27 @@ function App() {
           <div className="mt-8 text-sm text-gray-500">
             <div className="space-y-2">
               <div className="flex items-center justify-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${initializationProgress.deviceDetection ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                <div
+                  className={`w-2 h-2 rounded-full ${initializationProgress.deviceDetection ? "bg-green-500" : "bg-gray-600"}`}
+                ></div>
                 <span>Device detection</span>
               </div>
               <div className="flex items-center justify-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${initializationProgress.camera ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                <div
+                  className={`w-2 h-2 rounded-full ${initializationProgress.camera ? "bg-green-500" : "bg-gray-600"}`}
+                ></div>
                 <span>Camera access</span>
               </div>
               <div className="flex items-center justify-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${initializationProgress.handDetection ? 'bg-green-500' : 'bg-gray-600'}`}></div>
+                <div
+                  className={`w-2 h-2 rounded-full ${initializationProgress.handDetection ? "bg-green-500" : "bg-gray-600"}`}
+                ></div>
                 <span>Hand detection model</span>
               </div>
             </div>
-            <p className="mt-4 text-xs text-gray-600">Allow camera access when prompted</p>
+            <p className="mt-4 text-xs text-gray-600">
+              Allow camera access when prompted
+            </p>
           </div>
         </div>
       </div>

@@ -25,12 +25,12 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const previousGestureRef = useRef<string>("none");
   const lastProcessTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
-  
+
   // Gesture stability tracking
   const gestureHistoryRef = useRef<string[]>([]);
   const stableGestureRef = useRef<string>("none");
   const gestureCountRef = useRef<Map<string, number>>(new Map());
-  
+
   // Cooldown tracking - prevent new gestures immediately after detection
   const lastGestureTimeRef = useRef<number>(0);
   const gestureCooldownRef = useRef<number>(3000); // 3 seconds cooldown
@@ -68,58 +68,61 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
       // Use both PIP and MCP for more robust detection
       const pipExtended = tip.y < pip.y - 0.025; // Reduced from 0.03
-      const mcpExtended = tip.y < mcp.y - 0.05;  // Additional check
+      const mcpExtended = tip.y < mcp.y - 0.05; // Additional check
       const isExtended = pipExtended || mcpExtended;
-      
+
       fingerStates.push(isExtended);
       if (isExtended) extendedFingers++;
     }
 
-    
-
     // Peace Sign detection - index and middle fingers extended
-    if (fingerStates[1] && fingerStates[2]) { // Both index and middle extended
+    if (fingerStates[1] && fingerStates[2]) {
+      // Both index and middle extended
       // Check that other fingers are not extended (thumb can be extended, ring and pinky should be down)
       const otherFingersExtended = fingerStates[3] || fingerStates[4]; // Ring or pinky extended
-      
+
       if (!otherFingersExtended) {
         // Additional validation: index and middle should be spread apart
         const middleTip = landmarks[fingerTips[2]];
         const indexMiddleDistance = Math.sqrt(
           Math.pow(indexTip.x - middleTip.x, 2) +
-            Math.pow(indexTip.y - middleTip.y, 2)
+            Math.pow(indexTip.y - middleTip.y, 2),
         );
-        
+
         // Index and middle fingers should be reasonably separated (forming V shape)
-        if (indexMiddleDistance > 0.08) { // Minimum separation for peace sign
+        if (indexMiddleDistance > 0.08) {
+          // Minimum separation for peace sign
           return "PEACE_SIGN";
         }
       }
     }
 
     // Real-world Point Up detection - prioritize this over fist
-    if (fingerStates[1]) { // index finger extended
+    if (fingerStates[1]) {
+      // index finger extended
       // Check if index finger is pointing upward relative to hand orientation
       const wrist = landmarks[0]; // Wrist landmark
       const indexVector = {
         x: indexTip.x - wrist.x,
-        y: indexTip.y - wrist.y
+        y: indexTip.y - wrist.y,
       };
-      
+
       // Calculate angle of index finger pointing up
       const indexAngle = Math.atan2(indexVector.y, indexVector.x);
-      const pointingUp = indexAngle < -Math.PI/4; // 45+ degrees (more lenient)
-      
+      const pointingUp = indexAngle < -Math.PI / 4; // 45+ degrees (more lenient)
+
       if (pointingUp) {
         // For point up, allow thumb to be extended (common) but other fingers should be down
-        if (extendedFingers <= 2) { // Index + optionally thumb
+        if (extendedFingers <= 2) {
+          // Index + optionally thumb
           return "POINT_UP";
         }
       }
     }
 
     // Enhanced Fist detection - stricter criteria after checking for point up
-    if (extendedFingers <= 1) { // Only allow 0 or 1 finger for real fist
+    if (extendedFingers <= 1) {
+      // Only allow 0 or 1 finger for real fist
       return "FIST";
     }
 
@@ -163,52 +166,67 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         let stream: MediaStream | null = null;
         let retryCount = 0;
         const maxRetries = 3;
-        
+
         while (!stream && retryCount < maxRetries) {
           try {
-            console.log(`Attempting to get camera access (attempt ${retryCount + 1}/${maxRetries})`);
-            
+            console.log(
+              `Attempting to get camera access (attempt ${retryCount + 1}/${maxRetries})`,
+            );
+
             // Get camera stream with permissive fallback constraints
             stream = await navigator.mediaDevices.getUserMedia({
-              video: retryCount === 0 ? {
-                width: { ideal: 1280, max: 1920 },
-                height: { ideal: 720, max: 1080 },
-                facingMode: "user",
-                frameRate: { ideal: 30, max: 60 },
-              } : {
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                facingMode: "user",
-              }, // Fallback to lower resolution on retry
+              video:
+                retryCount === 0
+                  ? {
+                      width: { ideal: 1280, max: 1920 },
+                      height: { ideal: 720, max: 1080 },
+                      facingMode: "user",
+                      frameRate: { ideal: 30, max: 60 },
+                    }
+                  : {
+                      width: { ideal: 640 },
+                      height: { ideal: 480 },
+                      facingMode: "user",
+                    }, // Fallback to lower resolution on retry
               audio: false,
             });
-            
+
             console.log("Camera access granted successfully");
             break;
-            
-          } catch (mediaError: any) {
-            console.warn(`Camera access attempt ${retryCount + 1} failed:`, mediaError);
-            
+          } catch (mediaError: unknown) {
+            console.warn(
+              `Camera access attempt ${retryCount + 1} failed:`,
+              mediaError,
+            );
+
             // Handle different permission errors
-            if (mediaError.name === 'NotAllowedError') {
+            if (mediaError instanceof Error && mediaError.name === "NotAllowedError") {
               // User denied permission - don't retry automatically
-              setError("Camera permission denied. Please allow camera access and refresh the page.");
+              setError(
+                "Camera permission denied. Please allow camera access and refresh the page.",
+              );
               setIsLoading(false);
               return;
-            } else if (mediaError.name === 'NotFoundError') {
+            } else if (mediaError instanceof Error && mediaError.name === "NotFoundError") {
               // No camera found
-              setError("No camera detected. Please connect a camera and refresh the page.");
+              setError(
+                "No camera detected. Please connect a camera and refresh the page.",
+              );
               setIsLoading(false);
               return;
-            } else if (mediaError.name === 'NotReadableError') {
+            } else if (mediaError instanceof Error && mediaError.name === "NotReadableError") {
               // Camera is already in use
               if (retryCount < maxRetries - 1) {
                 console.log("Camera in use, retrying after delay...");
-                await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 1000 * (retryCount + 1)),
+                );
                 retryCount++;
                 continue;
               } else {
-                setError("Camera is already in use by another application. Please close other camera apps and refresh.");
+                setError(
+                  "Camera is already in use by another application. Please close other camera apps and refresh.",
+                );
                 setIsLoading(false);
                 return;
               }
@@ -216,16 +234,20 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               // Other errors - retry
               if (retryCount < maxRetries - 1) {
                 console.log("Retrying camera access after error...");
-                await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 1000 * (retryCount + 1)),
+                );
                 retryCount++;
                 continue;
               }
             }
           }
         }
-        
+
         if (!stream) {
-          setError("Failed to access camera after multiple attempts. Please refresh the page and try again.");
+          setError(
+            "Failed to access camera after multiple attempts. Please refresh the page and try again.",
+          );
           setIsLoading(false);
           return;
         }
@@ -373,7 +395,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               gestureHistoryRef.current = [];
               gestureCountRef.current.clear();
               stableGestureRef.current = "none";
-              
+
               if (previousGestureRef.current !== "none") {
                 previousGestureRef.current = "none";
                 onGestureDetected?.("none", { x: 0, y: 0 });
@@ -395,7 +417,10 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
               // Reset other gesture counts that haven't been seen recently
               for (const [key] of gestureCountRef.current.entries()) {
-                if (key !== gesture && !gestureHistoryRef.current.slice(-3).includes(key)) {
+                if (
+                  key !== gesture &&
+                  !gestureHistoryRef.current.slice(-3).includes(key)
+                ) {
                   gestureCountRef.current.delete(key);
                 }
               }
@@ -425,15 +450,21 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
               // Check cooldown before triggering callback
               const currentTime = Date.now();
-              const timeSinceLastGesture = currentTime - lastGestureTimeRef.current;
-              const cooldownActive = timeSinceLastGesture < gestureCooldownRef.current;
-              
+              const timeSinceLastGesture =
+                currentTime - lastGestureTimeRef.current;
+              const cooldownActive =
+                timeSinceLastGesture < gestureCooldownRef.current;
+
               // Only trigger callback if stable gesture changed and not in cooldown
               if (newStableGesture !== stableGestureRef.current) {
                 stableGestureRef.current = newStableGesture;
-                
+
                 // Allow "none", "open hand", and "partial" gestures always (no cooldown)
-                if (newStableGesture === "none" || newStableGesture === "OPEN_HAND" || newStableGesture === "PARTIAL") {
+                if (
+                  newStableGesture === "none" ||
+                  newStableGesture === "OPEN_HAND" ||
+                  newStableGesture === "PARTIAL"
+                ) {
                   if (previousGestureRef.current !== newStableGesture) {
                     previousGestureRef.current = newStableGesture;
                     onGestureDetected?.(newStableGesture, position);
@@ -444,14 +475,14 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                   lastGestureTimeRef.current = currentTime;
                   onGestureDetected?.(newStableGesture, position);
                   isInCooldownRef.current = true;
-                  
+
                   // Start cooldown UI display
                   setCooldownRemaining(3);
                   if (cooldownIntervalRef.current) {
                     clearInterval(cooldownIntervalRef.current);
                   }
                   cooldownIntervalRef.current = window.setInterval(() => {
-                    setCooldownRemaining(prev => {
+                    setCooldownRemaining((prev) => {
                       if (prev <= 1) {
                         clearInterval(cooldownIntervalRef.current!);
                         cooldownIntervalRef.current = null;
@@ -461,15 +492,21 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                       return prev - 1;
                     });
                   }, 1000);
-                  
-                  console.log(`Gesture "${newStableGesture}" detected. Cooldown activated for ${gestureCooldownRef.current}ms`);
+
+                  console.log(
+                    `Gesture "${newStableGesture}" detected. Cooldown activated for ${gestureCooldownRef.current}ms`,
+                  );
                 } else {
                   // Main gesture detected but cooldown is active
-                  const remainingTime = Math.ceil((gestureCooldownRef.current - timeSinceLastGesture) / 1000);
-                  if (cooldownRemaining !== remainingTime && remainingTime > 0) {
+                  const remainingTime = Math.ceil(
+                    (gestureCooldownRef.current - timeSinceLastGesture) / 1000,
+                  );
+                  if (remainingTime > 0) {
                     setCooldownRemaining(remainingTime);
                   }
-                  console.log(`Gesture "${newStableGesture}" detected but cooldown active (${remainingTime}s remaining)`);
+                  console.log(
+                    `Gesture "${newStableGesture}" detected but cooldown active (${remainingTime}s remaining)`,
+                  );
                 }
               }
             }
@@ -527,7 +564,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             setError(null);
             setIsLoading(true);
             // Trigger re-initialization by incrementing retry key
-            setRetryKey(prev => prev + 1);
+            setRetryKey((prev) => prev + 1);
           }}
           className="mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
         >
@@ -556,10 +593,14 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   // Gesture emoji mapping
   const getGestureEmoji = (gesture: string): string => {
     switch (gesture) {
-      case "POINT_UP": return "☝️";
-      case "FIST": return "✊";
-      case "PEACE_SIGN": return "✌️";
-      default: return "";
+      case "POINT_UP":
+        return "☝️";
+      case "FIST":
+        return "✊";
+      case "PEACE_SIGN":
+        return "✌️";
+      default:
+        return "";
     }
   };
 
@@ -572,7 +613,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         muted
         className="w-full h-full object-cover rounded-lg bg-black transform scale-x-[-1]"
       />
-      
+
       {/* Cooldown indicator - show in top left when active */}
       {cooldownRemaining > 0 && (
         <div className="absolute top-4 left-4 bg-orange-900/90 backdrop-blur-sm px-4 py-3 rounded-lg border border-orange-700/50 shadow-lg">
@@ -582,18 +623,22 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                 <div className="w-8 h-8 border-2 border-orange-500/30 rounded-full"></div>
                 <div className="absolute inset-0 border-2 border-orange-500 rounded-full border-t-transparent animate-spin"></div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">{cooldownRemaining}</span>
+                  <span className="text-white text-sm font-bold">
+                    {cooldownRemaining}
+                  </span>
                 </div>
               </div>
             </div>
             <div className="text-white">
               <p className="text-sm font-medium">Waiting...</p>
-              <p className="text-xs text-orange-300">New gesture in {cooldownRemaining}s</p>
+              <p className="text-xs text-orange-300">
+                New gesture in {cooldownRemaining}s
+              </p>
             </div>
           </div>
         </div>
       )}
-      
+
       {/* Gesture overlay - show current gesture in top right */}
       {currentGesture && currentGesture !== "none" && (
         <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-sm px-4 py-2 rounded-lg border border-white/20">
