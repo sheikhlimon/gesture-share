@@ -92,12 +92,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         
         // Index and middle fingers should be reasonably separated (forming V shape)
         if (indexMiddleDistance > 0.08) { // Minimum separation for peace sign
-          console.log("PEACE_SIGN detected", { 
-            indexMiddleDistance, 
-            extendedFingers, 
-            fingerStates,
-            thumbExtended: fingerStates[0]
-          });
           return "PEACE_SIGN";
         }
       }

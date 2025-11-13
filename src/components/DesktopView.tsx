@@ -155,7 +155,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
     if (peerRef.current) return;
 
     try {
-      console.log("Initializing PeerJS connection...");
       setConnectionStatus("connecting");
       const newPeer = new Peer.Peer("", {
         config: {
@@ -169,30 +168,23 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
       peerRef.current = newPeer;
 
       newPeer.on("open", (id) => {
-        console.log("PeerJS opened with ID:", id);
         setPeerId(id);
         setConnectionStatus("idle");
       });
 
       newPeer.on("connection", (conn) => {
-        console.log("Desktop received connection from:", conn.peer);
-
         // Answer the connection
         conn.on("open", () => {
-          console.log("Desktop connection opened to:", conn.peer);
           setConnections((prev) => new Map(prev).set(conn.peer, conn));
           setConnectionStatus("connected");
           setShowQRModal(false); // Close QR modal when connected
         });
 
         conn.on("close", () => {
-          console.log("Desktop connection closed to:", conn.peer);
           setConnections((prev) => {
             const newMap = new Map(prev);
             newMap.delete(conn.peer);
-            console.log("Remaining connections:", newMap.size);
             if (newMap.size === 0) {
-              console.log("No connections remaining, setting status to idle");
               setConnectionStatus("idle");
             }
             return newMap;
@@ -223,8 +215,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
   const countdownIntervalRef = useRef<number | null>(null);
 
   const openFilePickerDirectly = useCallback(() => {
-    console.log("=== Opening file picker directly ===");
-    
     // Clear countdown when file picker is opened
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -244,7 +234,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
       const files = (event.target as HTMLInputElement).files;
       if (files && files.length > 0) {
         const file = files[0];
-        console.log("File selected:", file.name);
         setSelectedFile(file);
         onFileSelect(file);
       }
@@ -267,8 +256,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
   }, [onFileSelect]);
 
   const triggerFilePickerFlow = useCallback(() => {
-    console.log("=== Triggering file picker flow ===");
-    
     // Clear any existing countdown first
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -308,9 +295,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
 
   const sendFile = useCallback(
     async (file: File, connection: Peer.DataConnection) => {
-      console.log("=== sendFile called ===");
-      console.log("File:", file.name, "Size:", file.size);
-      console.log("Connection:", connection.peer, "Open:", connection.open);
       try {
         const fileId = Date.now().toString();
         const fileStart = {
@@ -320,7 +304,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
           fileSize: file.size,
           fileType: file.type,
         } as FileStart;
-        console.log("Sending file-start:", fileStart);
         connection.send(fileStart);
 
         const chunkSize = 16384;
@@ -352,9 +335,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
   );
 
   const handleGestureDetected = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async (gesture: string, _position: { x: number; y: number }) => {
-      console.log("DesktopView handleGestureDetected:", gesture);
       setCurrentGesture(gesture);
 
       // Use refs to access current state without causing re-renders
@@ -365,12 +346,6 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
 
       switch (gesture) {
         case "POINT_UP":
-          console.log(
-            "Point Up gesture detected, connection status:",
-            currentStatus,
-            "peerId:",
-            currentPeerId,
-          );
           if (currentStatus !== "connected") {
             setShowQRModal(true);
           }
@@ -382,22 +357,11 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
           break;
 
         case "PEACE_SIGN":
-          console.log("=== PEACE SIGN DETECTED - SENDING FILE ===");
-          console.log("Selected file:", currentFile?.name);
-          console.log("Selected file size:", currentFile?.size);
-          console.log("Connections size:", currentConnections.size);
-          console.log("Available connections:", Array.from(currentConnections.keys()));
-
           if (currentFile && currentConnections.size > 0) {
             const firstConnection = Array.from(currentConnections.values())[0];
             if (firstConnection) {
-              console.log("Connection object:", firstConnection);
-              console.log("Connection peer:", firstConnection.peer);
-              console.log("Connection open:", firstConnection.open);
-              console.log("Trying to send file...");
               await sendFile(currentFile, firstConnection);
             } else {
-              console.log("ERROR: First connection is null/undefined");
             }
           } else {
             if (!currentFile) {

@@ -26,21 +26,12 @@ function App() {
     // Only use width as fallback for very small screens (under 500px)
     const isSmallScreen = window.innerWidth < 500;
     const isMobileDevice = isMobileBrowser || isSmallScreen;
-    console.log(
-      "Device detection:",
-      userAgent,
-      isMobileDevice,
-      "Width:",
-      window.innerWidth,
-    );
     setIsMobile(isMobileDevice);
     setInitializationProgress(prev => ({ ...prev, deviceDetection: true }));
   }, []);
 
   const initializeCameraAndDetection = useCallback(async () => {
     try {
-      console.log("=== Pre-initializing camera and hand detection ===");
-      
       // Actually request camera access to pre-warm it
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -55,7 +46,6 @@ function App() {
         
         // Stop the stream immediately to free it for the actual component
         stream.getTracks().forEach(track => track.stop());
-        console.log("Camera access pre-warmed successfully");
         setInitializationProgress(prev => ({ ...prev, camera: true }));
       } catch (cameraError) {
         console.warn("Camera pre-warm failed, but continuing:", cameraError);
@@ -81,15 +71,12 @@ function App() {
           numHands: 1,
         });
         
-        console.log("Hand detection model pre-loaded successfully");
         setInitializationProgress(prev => ({ ...prev, handDetection: true }));
       } catch (modelError) {
         console.warn("Hand detection model pre-load failed, but continuing:", modelError);
         // Still mark as complete to allow app to continue
         setInitializationProgress(prev => ({ ...prev, handDetection: true }));
       }
-      
-      console.log("=== Camera and hand detection pre-initialization complete ===");
       
     } catch (error) {
       console.error("Failed to pre-initialize camera/hand detection:", error);
@@ -114,7 +101,6 @@ function App() {
     // Set a timeout to hide loading screen after max 3 seconds
     const maxTimeout = setTimeout(() => {
       if (isMounted) {
-        console.log("=== Loading timeout reached, proceeding to app ===");
         setIsLoading(false);
       }
     }, 3000);
@@ -131,7 +117,6 @@ function App() {
   // Separate effect to check initialization progress
   useEffect(() => {
     if (Object.values(initializationProgress).every(Boolean)) {
-      console.log("=== All components initialized ===");
       setIsLoading(false);
     }
   }, [initializationProgress]);
