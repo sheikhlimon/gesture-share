@@ -23,6 +23,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   const previousGestureRef = useRef<string>("none");
   const lastProcessTimeRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
+  
+  // Gesture stability tracking
+  const gestureHistoryRef = useRef<string[]>([]);
+  const stableGestureRef = useRef<string>("none");
+  const gestureCountRef = useRef<Map<string, number>>(new Map());
 
   const classifyGesture = (
     landmarks: { x: number; y: number; z?: number }[],
@@ -37,68 +42,68 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     let extendedFingers = 0;
     const fingerStates: boolean[] = [];
 
-    // Thumb detection - more strict criteria
+    // Thumb detection - more lenient criteria for better detection
     const thumbTip = landmarks[fingerTips[0]];
     const thumbMcp = landmarks[fingerMcp[0]];
     const thumbIp = landmarks[fingerPip[0]];
     const indexTip = landmarks[fingerTips[1]];
+    const middleTip = landmarks[fingerTips[2]];
 
-    // Thumb is extended if tip is significantly above IP joint and to the side
-    const thumbUp =
-      thumbTip.y < thumbIp.y - 0.04 && Math.abs(thumbTip.x - thumbMcp.x) > 0.08;
+    // Thumb is extended if tip is above IP joint (reduced threshold)
+    const thumbUp = thumbTip.y < thumbIp.y - 0.02;
 
     fingerStates.push(thumbUp);
     if (thumbUp) extendedFingers++;
 
-    // Other fingers detection - more strict criteria using PIP joint
+    // Other fingers detection - more lenient criteria
     for (let i = 1; i < 5; i++) {
       const tip = landmarks[fingerTips[i]];
       const pip = landmarks[fingerPip[i]];
 
-      // Finger is extended if tip is significantly above PIP joint
-      const isExtended = tip.y < pip.y - 0.06;
+      // Finger is extended if tip is above PIP joint (reduced threshold)
+      const isExtended = tip.y < pip.y - 0.03;
       fingerStates.push(isExtended);
       if (isExtended) extendedFingers++;
     }
 
-    // OK Sign detection - thumb and index finger touching
+    // OK Sign detection - thumb and index finger touching (increased threshold)
     const thumbIndexDistance = Math.sqrt(
       Math.pow(thumbTip.x - indexTip.x, 2) +
         Math.pow(thumbTip.y - indexTip.y, 2),
     );
 
+    // Check if thumb and index are close and other fingers are down
     if (
-      thumbIndexDistance < 0.05 && // thumb and index touching
-      !fingerStates[2] &&
-      !fingerStates[3] &&
-      !fingerStates[4]
+      thumbIndexDistance < 0.08 && // Increased from 0.05 to 0.08 for easier detection
+      !fingerStates[2] && // middle down
+      !fingerStates[3] && // ring down
+      !fingerStates[4]    // pinky down
     ) {
-      // other fingers down
-      return "OK_SIGN";
+      // Additional check: thumb should be somewhat extended for OK sign
+      if (thumbUp) {
+        return "OK_SIGN";
+      }
     }
 
-    // Fist detection - very strict, no fingers should be extended
-    if (extendedFingers === 0) return "FIST";
-
-    // Open hand detection - all fingers extended
-    if (extendedFingers === 5) return "OPEN_HAND";
+    // Fist detection - allow very minimal finger extension
+    if (extendedFingers <= 1) return "FIST";
 
     // Point Up - only index finger extended and pointing up
     if (
-      !fingerStates[0] && // thumb not extended
       fingerStates[1] && // index extended
-      !fingerStates[2] && // middle not extended
-      !fingerStates[3] && // ring not extended
-      !fingerStates[4] // pinky not extended
+      extendedFingers === 1 // only index finger extended
     ) {
-      // Check if index finger is pointing up (y coordinate significantly higher than other parts)
+      // Check if index finger is pointing up (reduced threshold)
       const indexMcp = landmarks[fingerMcp[1]];
-      const indexPointingUp = indexTip.y < indexMcp.y - 0.1;
+      const indexPointingUp = indexTip.y < indexMcp.y - 0.08;
 
       if (indexPointingUp) {
         return "POINT_UP";
       }
     }
+
+    // Open hand detection - all fingers extended
+    if (extendedFingers >= 4) return "OPEN_HAND";
 
     return "PARTIAL";
   };
@@ -250,11 +255,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         setIsLoading(false);
 
-        // Start processing frames with rate limiting
+        // Start processing frames with rate limiting and gesture stability
         const processFrame = async () => {
-          // Rate limit to ~10 FPS
+          // Rate limit to ~5 FPS for more stable detection
           const now = Date.now();
-          if (now - lastProcessTimeRef.current < 100) {
+          if (now - lastProcessTimeRef.current < 200) {
             animationFrameRef.current = requestAnimationFrame(processFrame);
             return;
           }
@@ -283,6 +288,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             );
 
             if (!results.landmarks?.length) {
+              // Handle no hand detected
+              gestureHistoryRef.current = [];
+              gestureCountRef.current.clear();
+              stableGestureRef.current = "none";
+              
               if (previousGestureRef.current !== "none") {
                 previousGestureRef.current = "none";
                 onGestureDetected?.("none", { x: 0, y: 0 });
@@ -292,11 +302,54 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               const gesture = classifyGesture(landmarks);
               const position = { x: landmarks[0].x, y: landmarks[0].y };
 
-              if (gesture !== previousGestureRef.current) {
-                onGestureDetected?.(gesture, position);
+              // Add to gesture history
+              gestureHistoryRef.current.push(gesture);
+              if (gestureHistoryRef.current.length > 8) {
+                gestureHistoryRef.current.shift();
               }
 
-              previousGestureRef.current = gesture;
+              // Count gesture occurrences in recent history
+              const currentCount = gestureCountRef.current.get(gesture) || 0;
+              gestureCountRef.current.set(gesture, currentCount + 1);
+
+              // Reset other gesture counts that haven't been seen recently
+              for (const [key, count] of gestureCountRef.current.entries()) {
+                if (key !== gesture && !gestureHistoryRef.current.slice(-4).includes(key)) {
+                  gestureCountRef.current.delete(key);
+                }
+              }
+
+              // Determine stable gesture (need 4+ consistent detections)
+              const stableCount = gestureCountRef.current.get(gesture) || 0;
+              let newStableGesture = stableGestureRef.current;
+
+              if (stableCount >= 4) {
+                // Only change if different from current stable gesture
+                if (gesture !== stableGestureRef.current) {
+                  newStableGesture = gesture;
+                }
+              }
+
+              // Reset counter if gesture changes too much
+              if (gestureHistoryRef.current.length > 6) {
+                const recentGestures = gestureHistoryRef.current.slice(-6);
+                const uniqueGestures = new Set(recentGestures);
+                if (uniqueGestures.size > 3) {
+                  // Too much variation, reset
+                  gestureHistoryRef.current = [gesture];
+                  gestureCountRef.current.clear();
+                  gestureCountRef.current.set(gesture, 1);
+                }
+              }
+
+              // Only trigger callback if stable gesture changed
+              if (newStableGesture !== stableGestureRef.current) {
+                stableGestureRef.current = newStableGesture;
+                if (previousGestureRef.current !== newStableGesture) {
+                  previousGestureRef.current = newStableGesture;
+                  onGestureDetected?.(newStableGesture, position);
+                }
+              }
             }
           } catch (error) {
             console.error("MediaPipe processing error:", error);
