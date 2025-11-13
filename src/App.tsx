@@ -11,26 +11,6 @@ function App() {
     deviceDetection: false,
   });
 
-  // Check if URL has peer parameter - if so, force mobile view
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const hasPeerParam = urlParams.has("peer");
-    if (hasPeerParam) {
-      setIsMobile(true);
-      setIsLoading(false); // Skip loading for QR connections
-      setInitializationProgress({
-        camera: true,
-        handDetection: true,
-        deviceDetection: true,
-      });
-      return; // Skip normal device detection
-    }
-
-    // Normal device detection for desktop usage
-    detectDevice();
-    initializeCameraAndDetection();
-  }, []);
-
   const handleFileSelect = useCallback((file: File) => {
     console.log("File selected for sharing:", file.name);
   }, []);
@@ -112,7 +92,26 @@ function App() {
     }
   }, []);
 
-  // This useEffect is now handled by the one above
+  // Check if URL has peer parameter - if so, force mobile view
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasPeerParam = urlParams.has("peer");
+    if (hasPeerParam) {
+      console.log("QR parameter detected, forcing mobile view");
+      setIsMobile(true);
+      setIsLoading(false); // Skip loading for QR connections
+      setInitializationProgress({
+        camera: true,
+        handDetection: true,
+        deviceDetection: true,
+      });
+      return; // Skip normal device detection
+    }
+
+    // Normal device detection for desktop usage
+    detectDevice();
+    initializeCameraAndDetection();
+  }, [detectDevice, initializeCameraAndDetection]);
 
   // Separate effect to check initialization progress
   useEffect(() => {
