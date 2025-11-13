@@ -94,9 +94,18 @@ function App() {
 
   // Check if URL has peer parameter - if so, force mobile view
   useEffect(() => {
+    // Debug logging
+    console.log("Current URL:", window.location.href);
+    console.log("URL search:", window.location.search);
+
     const urlParams = new URLSearchParams(window.location.search);
     const hasPeerParam = urlParams.has("peer");
-    if (hasPeerParam) {
+    const peerParam = urlParams.get("peer");
+
+    console.log("Has peer param:", hasPeerParam);
+    console.log("Peer param value:", peerParam);
+
+    if (hasPeerParam && peerParam) {
       console.log("QR parameter detected, forcing mobile view");
       setIsMobile(true);
       setIsLoading(false); // Skip loading for QR connections
@@ -109,6 +118,7 @@ function App() {
     }
 
     // Normal device detection for desktop usage
+    console.log("No QR parameter, doing normal device detection");
     detectDevice();
     initializeCameraAndDetection();
   }, [detectDevice, initializeCameraAndDetection]);
