@@ -89,7 +89,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     const indexTip = landmarks[fingerTips[1]];
 
     // More accurate thumb detection using multiple reference points
-    const thumbUp = thumbTip.y < thumbIp.y - 0.01; // Even more reduced threshold for better detection
+    const thumbUp = thumbTip.y < thumbIp.y - 0.005; // Further reduced threshold for better detection
     fingerStates.push(thumbUp);
     if (thumbUp) extendedFingers++;
 
@@ -99,9 +99,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       const pip = landmarks[fingerPip[i]];
       const mcp = landmarks[fingerMcp[i]];
 
-      // Use both PIP and MCP for more robust detection - made more lenient
-      const pipExtended = tip.y < pip.y - 0.015; // Reduced from 0.025 for better sensitivity
-      const mcpExtended = tip.y < mcp.y - 0.03; // Reduced from 0.05
+      // Use both PIP and MCP for more robust detection - made much more lenient
+      const pipExtended = tip.y < pip.y - 0.008; // Further reduced from 0.015
+      const mcpExtended = tip.y < mcp.y - 0.015; // Further reduced from 0.03
       const isExtended = pipExtended || mcpExtended;
 
       fingerStates.push(isExtended);
@@ -123,8 +123,8 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         );
 
         // Index and middle fingers should be reasonably separated (forming V shape)
-        if (indexMiddleDistance > 0.08) {
-          // Minimum separation for peace sign
+        if (indexMiddleDistance > 0.06) {
+          // Reduced minimum separation for easier peace sign detection
           return "PEACE_SIGN";
         }
       }
@@ -448,11 +448,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                 }
               }
 
-              // Determine stable gesture (reduced from 4 to 3 for faster response)
+              // Determine stable gesture (reduced from 3 to 2 for much faster response)
               const stableCount = gestureCountRef.current.get(gesture) || 0;
               let newStableGesture = stableGestureRef.current;
 
-              if (stableCount >= 3) {
+              if (stableCount >= 2) {
                 // Only change if different from current stable gesture
                 if (gesture !== stableGestureRef.current) {
                   newStableGesture = gesture;
