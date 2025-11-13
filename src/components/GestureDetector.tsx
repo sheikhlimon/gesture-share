@@ -75,17 +75,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       if (isExtended) extendedFingers++;
     }
 
-    // Debug logging for troubleshooting
-    if (extendedFingers > 0) {
-      console.log("Finger states:", {
-        thumb: fingerStates[0],
-        index: fingerStates[1], 
-        middle: fingerStates[2],
-        ring: fingerStates[3],
-        pinky: fingerStates[4],
-        extendedCount: extendedFingers
-      });
-    }
+    
 
     // Peace Sign detection - index and middle fingers extended
     if (fingerStates[1] && fingerStates[2]) { // Both index and middle extended
