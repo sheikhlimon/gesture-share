@@ -1,42 +1,47 @@
-# Gesture Share - Development Guide
+# Gesture Share - Development Guide 🖐️
 
-A revolutionary gesture-based file sharing platform with modern development workflow.
+A revolutionary gesture-based file sharing platform with modern development workflow and comprehensive gesture recognition system.
 
 ## 🚀 Quick Start
 
 ```bash
-# Install Node.js using fnm (Fast Node Manager)
-fnm use && npm install
+# Install Node.js using mise (recommended)
+mise install && npm install
 
 # Start development server
+npm run dev
+
+# Or use fnm
+fnm use && npm install
 npm run dev
 ```
 
 ## 🔧 Development Environment Setup
 
-### Node.js Management with fnm
+### Node.js Management
+- **mise**: Modern development environment manager (recommended)
 - **fnm**: Fast Node Manager for version management
-- **No hermit**: Use fnm instead of hermit for Node.js
 - **Version Pinning**: Projects use specific Node versions
-- **Automatic Switching**: fnm automatically switches to project Node version
+- **Automatic Switching**: Tools automatically switch to project Node version
 
-### Keyboard Rules
-- **Minimal Keyboard Usage**: Development primarily through voice and gestures
-- **Essential Keyboard Shortcuts**: Only for development tool interactions
-- **Voice Commands**: Primary method for development tasks
-- **Gesture-Based**: Testing and user interaction without keyboard
-
-### Mise Configuration
+### Development Tools Setup
 ```toml
 # .mise.toml
 [tools]
 node = "20"
 typescript = "5"
-"pnpm" = "latest"
+"npm" = "latest"
 
 [env]
 NODE_ENV = "development"
 ```
+
+### Keyboard Rules & Accessibility
+- **Minimal Keyboard Usage**: Development primarily through voice and gestures
+- **Essential Keyboard Shortcuts**: Only for development tool interactions
+- **Voice Commands**: Primary method for development tasks
+- **Gesture-Based**: Testing and user interaction without keyboard
+- **Accessibility First**: Full keyboard navigation and screen reader support
 
 ## 🤖 Development Workflow
 
@@ -83,15 +88,27 @@ gesture-share/
 
 ### AI & Gesture Detection
 - **@mediapipe/tasks-vision**: MediaPipe vision API for hand tracking
-- **Enhanced Gesture Recognition**: Point Up, Fist, OK Sign detection
-- **Real-time Hand Tracking**: PIP joint-based finger detection
+- **Enhanced Gesture Recognition**: Point Up, Fist, Peace Sign detection
+- **Real-time Hand Tracking**: PIP joint-based finger detection with improved accuracy
+- **Smart Cooldown System**: 3-second cooldown prevents accidental triggers
 - **Gesture Flow Control**: QR display, file selection, and sending
+- **State Management**: Persistent file selection and connection state
+- **Component Optimization**: React.memo and useCallback for performance
+
+### Networking & File Transfer
+- **PeerJS**: WebRTC-based peer-to-peer connections
+- **P2P File Transfer**: Direct device-to-device file sharing
+- **QR Code Generation**: Dynamic connection QR codes
+- **Connection Management**: Real-time connection status tracking
+- **File Preview**: Thumbnail generation for images and file type indicators
 
 ### Development Tools
-- **fnm**: Fast Node Manager (preferred over hermit)
-- **ESLint**: Code quality enforcement
-- **TypeScript**: Static type checking
+- **mise**: Modern development environment manager (recommended)
+- **fnm**: Fast Node Manager for version management
+- **ESLint**: Code quality enforcement with TypeScript rules
+- **TypeScript**: Static type checking with strict mode
 - **Voice Commands**: Development task automation
+- **Git**: Version control with automated commit hooks
 
 ## 🎮 Input Methods & Accessibility
 

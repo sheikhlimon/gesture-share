@@ -475,26 +475,44 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         <div className="fixed top-0 left-0 right-0 z-40 bg-gray-900/90 backdrop-blur p-4">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold">Gesture Share</h1>
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  connectionStatus === "connected"
-                    ? "bg-green-500"
-                    : connectionStatus === "connecting"
-                      ? "bg-yellow-500"
-                      : "bg-gray-500"
-                }`}
-              ></div>
-              <span>{connectionStatus}</span>
+              {/* Logo */}
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"
+                    />
+                  </svg>
+                </div>
+                <h1 className="text-2xl font-bold">Gesture Share</h1>
+              </div>
             </div>
             <div className="flex items-center gap-4">
-              {selectedFile && (
-                <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded">
-                  <span className="text-sm truncate max-w-48">
-                    {selectedFile.name}
-                  </span>
-                </div>
-              )}
+              {/* Connection Status */}
+              <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    connectionStatus === "connected"
+                      ? "bg-green-500"
+                      : connectionStatus === "connecting"
+                        ? "bg-yellow-500"
+                        : "bg-gray-500"
+                  }`}
+                ></div>
+                <span className="text-sm">
+                  {connectionStatus === "connected" ? "Connected" : 
+                   connectionStatus === "connecting" ? "Connecting..." : 
+                   "Not Connected"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -542,25 +560,35 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                 <div className="mt-6 p-2 bg-gray-700 rounded-lg">
                   <div className="flex flex-col items-center justify-center">
                     {selectedFile ? (
-                      <div className="flex justify-center w-full">
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={selectedFile.name}
-                            className="w-full h-full max-w-56 max-h-56 rounded-lg object-contain border border-gray-600"
-                          />
-                        ) : (
-                          <div className="w-24 h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
-                            <span className="text-lg font-bold text-white">
-                              {selectedFile.name
-                                .split(".")
-                                .pop()
-                                ?.toUpperCase()
-                                .slice(0, 3) || "FILE"}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                      <>
+                        <div className="flex justify-center w-full">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={selectedFile.name}
+                              className="w-full h-full max-w-56 max-h-56 rounded-lg object-contain border border-gray-600"
+                            />
+                          ) : (
+                            <div className="w-24 h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
+                              <span className="text-lg font-bold text-white">
+                                {selectedFile.name
+                                  .split(".")
+                                  .pop()
+                                  ?.toUpperCase()
+                                  .slice(0, 3) || "FILE"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-3 text-center">
+                          <p className="text-xs text-gray-300 truncate max-w-48">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-xs text-green-400 font-medium mt-1">
+                            Ready to share
+                          </p>
+                        </div>
+                      </>
                     ) : (
                       <span className="text-gray-400 text-sm">
                         No File Selected

@@ -1,18 +1,26 @@
-# Gesture Share
+# Gesture Share 🖐️
 
-A desktop application that enables seamless file sharing between your computer and mobile device using intuitive hand gestures.
+A desktop application that enables seamless file sharing between your computer and mobile device using intuitive hand gestures. Share files effortlessly with a simple wave, point, or peace sign!
 
-## Features
+## ✨ Features
 
-- **Gesture-Controlled File Sharing**: Use hand gestures to control file transfers
-- **Desktop-Optimized**: Built specifically for desktop use with webcam integration
-- **Real-time Hand Detection**: Uses MediaPipe for accurate gesture recognition
-- **QR Code Connections**: Easy mobile device pairing via QR codes
-- **Multiple Gesture Controls**:
-  - ☝️ **Point Up**: Show QR code for mobile connection
-  - ✊ **Fist**: Open file selector to choose files
-  - ✌️ **Peace Sign**: Send selected file to connected device
-  - ✋ **Open Hand**: Default/ready state
+- **🎯 Gesture-Controlled File Sharing**: Use hand gestures to control file transfers
+- **💻 Desktop-Optimized**: Built specifically for desktop use with webcam integration
+- **🤖 Real-time Hand Detection**: Uses MediaPipe for accurate gesture recognition
+- **📱 QR Code Connections**: Easy mobile device pairing via QR codes
+- **⚡ Smart Cooldown System**: 3-second cooldown prevents accidental gesture triggers
+- **🎨 Modern UI/UX**: Clean interface with real-time gesture feedback and visual indicators
+- **🔄 Connection Status**: Live connection status indicator in the header
+- **📁 File Preview**: Thumbnail preview for images and file type indicators
+- **🌐 P2P Technology**: Direct peer-to-peer file transfers using WebRTC
+
+### 🤚 Supported Gestures
+
+- **☝️ Point Up**: Show QR code for mobile connection
+- **✊ Fist**: Open file selector to choose files  
+- **✌️ Peace Sign**: Send selected file to connected device
+- **✋ Open Hand**: Default/ready state (no cooldown)
+- **🖐️ Partial**: Partial hand state (no cooldown)
 
 ## Quick Start
 

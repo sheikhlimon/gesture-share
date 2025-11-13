@@ -1,44 +1,54 @@
 # Development Environment Rules & Progress
 
-**Last Updated**: 2025-11-13 11:50:00
+**Last Updated**: 2025-11-13 17:52:00
 
 ## 🔧 Development Environment Rules
 
 ### Node.js Management
-- **Required**: fnm (Fast Node Manager) for Node.js version management
-- **NOT ALLOWED**: hermit for Node.js - use fnm instead
-- **Reason**: fnm provides better performance and integration
-- **Setup**: `fnm use && npm install` before development
+- **Recommended**: mise (modern development environment manager)
+- **Alternative**: fnm (Fast Node Manager) for Node.js version management
+- **Setup**: `mise install && npm install` or `fnm use && npm install`
+- **Reason**: mise provides better integration and automatic switching
 
 ### Tool Preferences
-- **Node.js**: Managed via fnm (not hermit)
-- **Package Manager**: npm (compatible with fnm)
-- **Build Tool**: Vite with TypeScript support
-- **Code Quality**: ESLint with Prettier
-- **Testing**: Vitest with React Testing Library
+- **Node.js**: Managed via mise or fnm (not hermit)
+- **Package Manager**: npm (compatible with mise/fnm)
+- **Build Tool**: Vite with TypeScript support and HMR
+- **Code Quality**: ESLint with TypeScript rules + Prettier
+- **Testing**: Vitest with React Testing Library (framework configured)
 
 ### Keyboard Usage Rules
 - **Minimize**: Reduce keyboard usage in development workflow
 - **Voice Commands**: Primary method for development tasks
 - **Gestures**: Use hand gestures for testing and validation
 - **Essential Only**: Keyboard only for system-level operations
+- **Accessibility First**: Full keyboard navigation for users who need it
 
 ## 📊 Current Project Status
 
 ### Implementation Progress
-- **Gesture Detection**: ✅ Complete with MediaPipe tasks-vision
-- **WebRTC Connection**: ✅ Complete with PeerJS
+- **Gesture Detection**: ✅ Complete with MediaPipe tasks-vision and enhanced accuracy
+- **WebRTC Connection**: ✅ Complete with PeerJS and P2P file transfer
 - **QR Code Generation**: ✅ Complete with auto-close functionality
-- **File Transfer**: ✅ Complete with progress tracking
+- **File Transfer**: ✅ Complete with progress tracking and file preview
 - **Device Detection**: ✅ Complete with manual override
-- **UI/UX**: ✅ Complete with modern white theme
+- **UI/UX**: ✅ Complete with modern dark theme and gesture feedback
+- **Cooldown System**: ✅ Complete with 3-second gesture cooldown
+- **State Management**: ✅ Complete with persistent file/connection state
+- **Logo & Branding**: ✅ Complete with custom SVG logo and favicon
+- **Console Cleanup**: ✅ Complete with removed verbose debug logs
 
-### Recent Bug Fixes
+### Recent Improvements & Bug Fixes
 - **Video Initialization**: ✅ Fixed infinite loop with video ref
-- **TypeScript Errors**: ✅ Fixed Peer.Peer constructor issues
-- **Gesture Recognition**: ✅ Fixed peace sign and thumbs up detection
+- **TypeScript Errors**: ✅ Fixed Peer.Peer constructor and type issues
+- **Gesture Recognition**: ✅ Fixed peace sign detection (replaced OK sign)
 - **QR Modal**: ✅ Fixed auto-close and styling
 - **Connection Issues**: ✅ Fixed localhost to network IP detection
+- **State Persistence**: ✅ Fixed component remounting with React.memo
+- **Callback Optimization**: ✅ Fixed unstable callbacks causing re-renders
+- **UI Improvements**: ✅ Added connection status indicator and file preview
+- **ESLint Compliance**: ✅ Fixed all TypeScript and linting errors
+- **Performance**: ✅ Optimized component rendering and memory usage
 
 ### Component Status
 - **GestureDetector.tsx**: ✅ Working with MediaPipe tasks-vision
@@ -91,10 +101,19 @@
 
 ### Supported Gestures
 - **Point Up (☝️)**: Display QR code for device pairing
-- **Fist (✊)**: Open file selector menu
-- **OK Sign (👌)**: Send selected files to connected device
-- **Open Hand (✋)**: Default/ready state
+- **Fist (✊)**: Open file selector menu  
+- **Peace Sign (✌️)**: Send selected files to connected device (replaced OK Sign)
+- **Open Hand (✋)**: Default/ready state (no cooldown)
+- **Partial Hand (🖐️)**: Partial hand state (no cooldown)
+
+### Advanced Features
+- **Smart Cooldown**: 3-second cooldown prevents accidental gesture triggers
+- **Visual Feedback**: Real-time gesture overlay and countdown indicators
+- **State Persistence**: File selection and connection state preserved during gestures
+- **Connection Status**: Live connection indicator in header
+- **File Preview**: Thumbnail display for images and file type indicators
+- **Gesture History**: Improved gesture stability with reduced false positives
 
 ---
 
-*Development environment configured for minimal keyboard usage with fnm for Node.js management*
+*Development environment configured for minimal keyboard usage with mise/fnm for Node.js management*
