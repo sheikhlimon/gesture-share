@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { GestureDetector } from "./GestureDetector";
 import { QRDisplay } from "./QRDisplay";
-import GestureTips from "./GestureTips";
 import * as Peer from "peerjs";
 
 interface FileStart {
@@ -563,11 +562,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                 <GestureDetector
                   onGestureDetected={handleGestureDetected}
                   isDetecting={true}
-                  currentGesture={currentGesture}
-                />
-                <GestureTips 
-                  currentGesture={currentGesture}
-                  showFilePickerButton={showFilePickerButton}
+                  currentGesture={showFilePickerButton ? "FILE_PICKER_ACTIVE" : currentGesture}
                 />
               </div>
 
