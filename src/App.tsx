@@ -207,9 +207,9 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900">
-      <DesktopView onFileSelect={handleFileSelect} />
+      <DesktopView key="desktop-view" onFileSelect={handleFileSelect} />
     </div>
   );
 }
 
-export default App;
+export default React.memo(App);
