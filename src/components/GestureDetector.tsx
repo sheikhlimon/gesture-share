@@ -291,62 +291,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         streamRef.current = stream;
 
-        // Set up video with improved initialization
-        const setupVideo = () => {
-          return new Promise<void>((resolve, reject) => {
-            // Wait for video ref to be available with timeout
-            const waitForVideo = (attempts = 0) => {
-              if (attempts > 30) { // 3 seconds max
-                reject(new Error("Video element not found after 3 seconds"));
-                return;
-              }
-
-              if (!videoRef.current) {
-                setTimeout(() => waitForVideo(attempts + 1), 100);
-                return;
-              }
-
-              const video = videoRef.current;
-              
-              // Clear any existing srcObject
-              if (video.srcObject) {
-                const oldStream = video.srcObject as MediaStream;
-                oldStream.getTracks().forEach((track) => track.stop());
-              }
-
-              // Set new stream
-              video.srcObject = stream;
-
-              // Wait for video to be ready
-              video.addEventListener('loadeddata', async () => {
-                try {
-                  await video.play();
-                  console.log("Video started successfully");
-                  resolve();
-                } catch (error) {
-                  console.error("Video play failed:", error);
-                  reject(error);
-                }
-              }, { once: true });
-
-              // Fallback timeout
-              setTimeout(() => {
-                reject(new Error("Video loading timeout"));
-              }, 5000);
-            };
-
-            waitForVideo();
-          });
-        };
-
-        // Initialize video with proper error handling
-        try {
-          await setupVideo();
-        } catch (videoError) {
-          console.error("Video initialization failed:", videoError);
-          throw videoError;
-        }
-
         // Initialize HandLandmarker with tasks-vision
         const vision = await FilesetResolver.forVisionTasks(
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm",
@@ -564,7 +508,50 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     };
   }, [isDetecting, onGestureDetected, retryKey]);
 
-  // Video setup for gesture detection - moved to stream initialization
+  // Set up video stream when stream becomes available
+  useEffect(() => {
+    if (!streamRef.current) {
+      return;
+    }
+
+    const setupVideo = () => {
+      if (!videoRef.current) {
+        return;
+      }
+
+      const video = videoRef.current;
+      
+      // Set the stream to the video element
+      video.srcObject = streamRef.current;
+      
+      // Try to play the video
+      video.play().catch((error) => {
+        console.warn("Video autoplay failed:", error);
+      });
+    };
+
+    // Try immediately
+    setupVideo();
+
+    // Keep trying until video element is ready
+    const intervalId = setInterval(() => {
+      if (videoRef.current && !videoRef.current.srcObject) {
+        setupVideo();
+      } else if (videoRef.current?.srcObject) {
+        clearInterval(intervalId);
+      }
+    }, 50);
+
+    return () => {
+      clearInterval(intervalId);
+      // Cleanup when stream changes or component unmounts
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [streamRef.current]); // Only trigger when stream actually changes
 
   if (error) {
     return (
@@ -625,8 +612,17 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         ref={videoRef}
         autoPlay
         muted
+        playsInline
         className="w-full h-full object-cover rounded-lg bg-black transform scale-x-[-1]"
+        
       />
+      
+      {/* Debug overlay - shows if video is actually playing */}
+      {!streamRef.current && (
+        <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
+          <p className="text-white text-sm">Waiting for camera stream...</p>
+        </div>
+      )}
 
       {/* Pro tip - show when no cooldown is active */}
       <GestureTips />
