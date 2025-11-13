@@ -131,6 +131,30 @@ mise install
 
 This will set up the correct Node.js version and dependencies automatically.
 
+## Deployment
+
+### Automated CI/CD
+
+The project uses GitHub Actions for automated builds and deployment:
+
+- **Build Verification**: Linting, type checking, and production builds
+- **Static Hosting Ready**: Build artifacts prepared for Vercel, Netlify, or GitHub Pages
+- **Automatic Deployment**: Triggered on pushes to main branch
+
+### Manual Deployment
+
+For manual deployment to static hosting platforms:
+
+1. **Build the project**:
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy `dist/` folder** to your preferred hosting platform:
+   - **Vercel**: Connect repository for automatic deployment
+   - **Netlify**: Drag and drop the `dist/` folder
+   - **GitHub Pages**: Use `gh-pages` branch or GitHub Actions
+
 ## Camera Requirements
 
 - Minimum resolution: 640x480
