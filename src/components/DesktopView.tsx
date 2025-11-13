@@ -98,9 +98,31 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
   const [currentGesture, setCurrentGesture] = useState<string>("");
   const [currentHost, setCurrentHost] = useState<string>("");
   const [showQRModal, setShowQRModal] = useState(false);
-  
+
+  // Refs for accessing current state in callbacks
+  const connectionStatusRef = useRef(connectionStatus);
+  const connectionsRef = useRef(connections);
+  const peerIdRef = useRef(peerId);
+  const selectedFileRef = useRef(selectedFile);
 
   const peerRef = useRef<Peer.Peer | null>(null);
+
+  // Update refs when state changes
+  useEffect(() => {
+    connectionStatusRef.current = connectionStatus;
+  }, [connectionStatus]);
+
+  useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
+
+  useEffect(() => {
+    peerIdRef.current = peerId;
+  }, [peerId]);
+
+  useEffect(() => {
+    selectedFileRef.current = selectedFile;
+  }, [selectedFile]);
 
   useEffect(() => {
     getNetworkIP().then((ip) => {
@@ -335,15 +357,21 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
       console.log("DesktopView handleGestureDetected:", gesture);
       setCurrentGesture(gesture);
 
+      // Use refs to access current state without causing re-renders
+      const currentStatus = connectionStatusRef.current;
+      const currentConnections = connectionsRef.current;
+      const currentPeerId = peerIdRef.current;
+      const currentFile = selectedFileRef.current;
+
       switch (gesture) {
         case "POINT_UP":
           console.log(
             "Point Up gesture detected, connection status:",
-            connectionStatus,
+            currentStatus,
             "peerId:",
-            peerId,
+            currentPeerId,
           );
-          if (connectionStatus !== "connected") {
+          if (currentStatus !== "connected") {
             setShowQRModal(true);
           }
           break;
@@ -355,41 +383,34 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(({ onFileSelec
 
         case "PEACE_SIGN":
           console.log("=== PEACE SIGN DETECTED - SENDING FILE ===");
-          console.log("Selected file:", selectedFile?.name);
-          console.log("Selected file size:", selectedFile?.size);
-          console.log("Connections size:", connections.size);
-          console.log("Available connections:", Array.from(connections.keys()));
+          console.log("Selected file:", currentFile?.name);
+          console.log("Selected file size:", currentFile?.size);
+          console.log("Connections size:", currentConnections.size);
+          console.log("Available connections:", Array.from(currentConnections.keys()));
 
-          if (selectedFile && connections.size > 0) {
-            const firstConnection = Array.from(connections.values())[0];
+          if (currentFile && currentConnections.size > 0) {
+            const firstConnection = Array.from(currentConnections.values())[0];
             if (firstConnection) {
               console.log("Connection object:", firstConnection);
               console.log("Connection peer:", firstConnection.peer);
               console.log("Connection open:", firstConnection.open);
               console.log("Trying to send file...");
-              await sendFile(selectedFile, firstConnection);
+              await sendFile(currentFile, firstConnection);
             } else {
               console.log("ERROR: First connection is null/undefined");
             }
           } else {
-            if (!selectedFile) {
+            if (!currentFile) {
               console.log("ERROR: No file selected");
             }
-            if (connections.size === 0) {
+            if (currentConnections.size === 0) {
               console.log("ERROR: No active connections");
             }
           }
           break;
       }
     },
-    [
-      connectionStatus,
-      connections,
-      onFileSelect,
-      peerId,
-      selectedFile,
-      sendFile,
-    ],
+    [sendFile, triggerFilePickerFlow],
   );
 
   return (
