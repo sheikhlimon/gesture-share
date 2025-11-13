@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import * as Peer from "peerjs";
+import { useCallback } from "react";
 
 interface FileMetadata {
   fileName: string;
@@ -47,95 +48,120 @@ export const MobileView: React.FC<MobileViewProps> = ({
   >(new Map());
   const connectionAttempted = useRef(false);
 
-  const connectToDesktop = async (desktopPeerId: string) => {
-    try {
-      setConnectionStatus("connecting");
-      const mobilePeer = new Peer.Peer({
-        config: {
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-          ],
-        },
-      });
+  const connectToDesktop = useCallback(
+    async (desktopPeerId: string) => {
+      console.log("Mobile connecting to desktop:", desktopPeerId);
+      // Only connect if this mobile view is actually visible
+      if (document.hidden) {
+        console.log("Mobile view is hidden, skipping connection");
+        return;
+      }
+      try {
+        setConnectionStatus("connecting");
 
-      mobilePeer.on("open", () => {
-        const conn = mobilePeer.connect(desktopPeerId);
-
-        conn.on("open", () => {
-          setConnectionStatus("connected");
-          onConnectionEstablished?.();
+        // Create mobile peer with exact same config as desktop
+        const mobilePeer = new Peer.Peer("", {
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+              { urls: "stun:stun2.l.google.com:19302" },
+            ],
+          },
         });
 
-        conn.on("data", (data: unknown) => {
-          const fileTransferData = data as FileChunk | FileStart | FileEnd;
-          if (fileTransferData.type === "file-start") {
-            setFileReceivingStatus(`Receiving: ${fileTransferData.fileName}`);
-            onFileReceived?.(
-              fileTransferData.fileName || "Unknown",
-              fileTransferData.fileSize || 0,
-            );
+        mobilePeer.on("open", (id) => {
+          console.log(
+            "Mobile peer ID:",
+            id,
+            "connecting to desktop:",
+            desktopPeerId,
+          );
 
-            fileChunksRef.current.set(fileTransferData.fileId || "default", {
-              chunks: [],
-              info: fileTransferData,
-            });
-          } else if (fileTransferData.type === "file-chunk") {
-            const existingFileData = fileChunksRef.current.get(
-              fileTransferData.fileId || "default",
-            );
-            if (existingFileData) {
-              existingFileData.chunks[fileTransferData.chunkIndex] =
-                fileTransferData.chunk;
-            }
-          } else if (fileTransferData.type === "file-end") {
-            const existingFileData = fileChunksRef.current.get(
-              fileTransferData.fileId || "default",
-            );
-            if (existingFileData && existingFileData.chunks.length > 0) {
-              setFileReceivingStatus(
-                `Processing: ${existingFileData.info.fileName}`,
+          const conn = mobilePeer.connect(desktopPeerId, {
+            reliable: true,
+          });
+
+          conn.on("open", () => {
+            console.log("Mobile connection opened successfully");
+            setConnectionStatus("connected");
+            onConnectionEstablished?.();
+          });
+
+          conn.on("error", (error) => {
+            console.error("Mobile connection error:", error);
+            setConnectionStatus("idle");
+          });
+
+          conn.on("close", () => {
+            console.log("Mobile connection closed");
+          });
+
+          conn.on("data", (data: unknown) => {
+            console.log("Mobile received data:", data);
+            const fileTransferData = data as FileChunk | FileStart | FileEnd;
+            if (fileTransferData.type === "file-start") {
+              console.log("File start received:", fileTransferData.fileName);
+              setFileReceivingStatus(`Receiving: ${fileTransferData.fileName}`);
+              onFileReceived?.(
+                fileTransferData.fileName || "Unknown",
+                fileTransferData.fileSize || 0,
               );
 
-              const blob = new Blob(existingFileData.chunks, {
-                type: existingFileData.info.fileType,
+              fileChunksRef.current.set(fileTransferData.fileId || "default", {
+                chunks: [],
+                info: fileTransferData,
               });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = existingFileData.info.fileName;
-              a.click();
-              URL.revokeObjectURL(url);
-
-              setFileReceivingStatus(
-                `Downloaded: ${existingFileData.info.fileName}`,
-              );
-              fileChunksRef.current.delete(
+            } else if (fileTransferData.type === "file-chunk") {
+              const existingFileData = fileChunksRef.current.get(
                 fileTransferData.fileId || "default",
               );
+              if (existingFileData) {
+                existingFileData.chunks[fileTransferData.chunkIndex] =
+                  fileTransferData.chunk;
+              }
+            } else if (fileTransferData.type === "file-end") {
+              const existingFileData = fileChunksRef.current.get(
+                fileTransferData.fileId || "default",
+              );
+              if (existingFileData && existingFileData.chunks.length > 0) {
+                setFileReceivingStatus(
+                  `Processing: ${existingFileData.info.fileName}`,
+                );
+
+                const blob = new Blob(existingFileData.chunks, {
+                  type: existingFileData.info.fileType,
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = existingFileData.info.fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                setFileReceivingStatus(
+                  `Downloaded: ${existingFileData.info.fileName}`,
+                );
+                fileChunksRef.current.delete(
+                  fileTransferData.fileId || "default",
+                );
+              }
             }
-          }
+          });
         });
 
-        conn.on("close", () => {
+        mobilePeer.on("error", (error) => {
+          console.error("Mobile peer error:", error);
           setConnectionStatus("idle");
+          mobilePeer.destroy();
         });
-
-        conn.on("error", () => {
-          setConnectionStatus("idle");
-        });
-      });
-
-      mobilePeer.on("error", () => {
+      } catch (error) {
+        console.error("Mobile peer initialization error:", error);
         setConnectionStatus("idle");
-        mobilePeer.destroy();
-      });
-    } catch (error) {
-      console.error("Mobile peer initialization error:", error);
-      setConnectionStatus("idle");
-    }
-  };
+      }
+    },
+    [onConnectionEstablished, onFileReceived],
+  );
 
   useEffect(() => {
     if (connectionAttempted.current) return;
@@ -212,11 +238,6 @@ export const MobileView: React.FC<MobileViewProps> = ({
                       ? "Waiting to connect"
                       : "Ready to Connect"}
               </h3>
-              <p className="text-gray-600 mb-1">
-                {desktopPeerId
-                  ? `Desktop ID: ${desktopPeerId.substring(0, 8)}...`
-                  : "Scan QR code from desktop"}
-              </p>
             </div>
 
             {fileReceivingStatus && (
@@ -225,6 +246,15 @@ export const MobileView: React.FC<MobileViewProps> = ({
                   {fileReceivingStatus}
                 </p>
               </div>
+            )}
+
+            {connectionStatus === "connecting" && desktopPeerId && (
+              <button
+                onClick={() => connectToDesktop(desktopPeerId)}
+                className="mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
+              >
+                Retry Connection
+              </button>
             )}
 
             {connectionStatus === "connected" && (

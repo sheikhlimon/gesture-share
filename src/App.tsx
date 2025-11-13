@@ -11,10 +11,21 @@ function App() {
 
   const detectDevice = useCallback(() => {
     const userAgent = navigator.userAgent.toLowerCase();
-    const isMobileDevice =
+    // Prioritize user agent detection - check for mobile browsers
+    const isMobileBrowser =
       /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
         userAgent,
-      ) || window.innerWidth < 768;
+      );
+    // Only use width as fallback for very small screens (under 500px)
+    const isSmallScreen = window.innerWidth < 500;
+    const isMobileDevice = isMobileBrowser || isSmallScreen;
+    console.log(
+      "Device detection:",
+      userAgent,
+      isMobileDevice,
+      "Width:",
+      window.innerWidth,
+    );
     setIsMobile(isMobileDevice);
   }, []);
 
@@ -23,10 +34,20 @@ function App() {
   }, [detectDevice]);
 
   if (isMobile) {
-    return <MobileView />;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-4">
+        <div className="max-w-md mx-auto">
+          <MobileView />
+        </div>
+      </div>
+    );
   }
 
-  return <DesktopView onFileSelect={handleFileSelect} />;
+  return (
+    <div className="min-h-screen bg-gray-900">
+      <DesktopView onFileSelect={handleFileSelect} />
+    </div>
+  );
 }
 
 export default App;
