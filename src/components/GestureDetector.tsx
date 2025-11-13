@@ -15,6 +15,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   isDetecting,
   currentGesture,
 }) => {
+  const [retryKey, setRetryKey] = useState(0); // Force re-initialization when changed
   const videoRef = useRef<HTMLVideoElement>(null);
   const handLandmarkerRef = useRef<HandLandmarker | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -481,7 +482,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         streamRef.current = null;
       }
     };
-  }, [isDetecting, onGestureDetected]);
+  }, [isDetecting, onGestureDetected, retryKey]);
 
   // Video setup for gesture detection - moved to stream initialization
 
@@ -496,9 +497,8 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
           onClick={() => {
             setError(null);
             setIsLoading(true);
-            // Trigger re-initialization by forcing a re-render
-            setTimeout(() => setIsDetecting(false), 100);
-            setTimeout(() => setIsDetecting(true), 200);
+            // Trigger re-initialization by incrementing retry key
+            setRetryKey(prev => prev + 1);
           }}
           className="mt-3 px-4 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded-md transition-colors"
         >
