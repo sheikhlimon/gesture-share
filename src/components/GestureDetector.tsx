@@ -36,6 +36,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
           <span className="text-2xl">✋</span>
           <div className="text-gray-200 font-sans">
             <span className="text-base font-medium block">
+              Show open hand before each gesture
+            </span>
+            <span className="text-xs text-gray-400 mt-1 block">
               Keep hand 1-2 feet from camera, well-lit, and in frame
             </span>
           </div>

@@ -419,7 +419,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
     );
 
     return (
-      <div className="min-h-screen bg-gray-900 text-white">
+      <div className="h-screen bg-gray-900 text-white">
         {/* QR Code - Centered modal matching website design */}
         {showQRModal && connectionStatus !== "connected" && peerId && (
           <div
@@ -427,16 +427,16 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             onClick={() => setShowQRModal(false)}
           >
             <div
-              className="bg-gray-800 text-white p-4 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full"
+              className="bg-gray-800 text-white p-4 sm:p-6 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
-                <h3 className="text-lg font-semibold mb-3 font-display">
+                <h3 className="text-base sm:text-lg font-semibold mb-3 font-display">
                   Connect Your Phone
                 </h3>
                 <QRDisplay
                   value={`${currentHost}/connect?peer=${peerId}`}
-                  size={200}
+                  size={180}
                   title=""
                 />
                 <div className="mt-3">
@@ -467,23 +467,23 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
             }}
           >
             <div
-              className="bg-gray-800 text-white p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full"
+              className="bg-gray-800 text-white p-4 sm:p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="text-center">
-                <div className="text-3xl mb-4">✊</div>
-                <h3 className="text-lg font-semibold mb-2 font-display">
+                <div className="text-2xl sm:text-3xl mb-3 sm:mb-4">✊</div>
+                <h3 className="text-base sm:text-lg font-semibold mb-2 font-display">
                   Fist Gesture Detected
                 </h3>
-                <p className="text-gray-400 mb-6">
+                <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">
                   Click the button below to open the file selector
                 </p>
                 <button
                   onClick={openFilePickerDirectly}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
                 >
                   <svg
-                    className="w-5 h-5"
+                    className="w-4 h-4 sm:w-5 sm:h-5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -506,14 +506,14 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         )}
 
         {/* Header */}
-        <div className="fixed top-0 left-0 right-0 z-40 bg-gray-900/90 backdrop-blur p-4">
+        <div className="fixed top-0 left-0 right-0 z-40 bg-gray-900/90 backdrop-blur p-2 sm:p-3 lg:p-4">
           <div className="max-w-7xl mx-auto flex justify-between items-center">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4">
               {/* Logo */}
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-700 rounded-lg flex items-center justify-center shadow-lg">
+              <div className="flex items-center gap-1 sm:gap-1.5 lg:gap-2">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-gradient-to-br from-teal-500 to-teal-700 rounded-lg flex items-center justify-center shadow-lg">
                   <svg
-                    className="w-5 h-5 text-white"
+                    className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-5 lg:h-5 text-white"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -526,14 +526,16 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                     />
                   </svg>
                 </div>
-                <h1 className="text-2xl font-bold font-display bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">Gesture Share</h1>
+                <h1 className="text-base sm:text-lg lg:text-2xl font-bold font-display bg-gradient-to-r from-teal-400 to-teal-600 bg-clip-text text-transparent">
+                  Gesture Share
+                </h1>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-2 lg:gap-4">
               {/* Connection Status */}
-              <div className="flex items-center gap-2 bg-gray-800 px-3 py-1 rounded">
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-gray-800 px-1.5 sm:px-2 lg:px-3 py-0.5 sm:py-1 rounded">
                 <div
-                  className={`w-2 h-2 rounded-full ${
+                  className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${
                     connectionStatus === "connected"
                       ? "bg-green-500"
                       : connectionStatus === "connecting"
@@ -541,7 +543,7 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                         : "bg-gray-500"
                   }`}
                 ></div>
-                <span className="text-sm">
+                <span className="text-xs sm:text-xs lg:text-sm">
                   {connectionStatus === "connected"
                     ? "Connected"
                     : connectionStatus === "connecting"
@@ -554,84 +556,100 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
         </div>
 
         {/* Main Content - Side by side layout */}
-        <div className="pt-20 h-[calc(100vh-5rem)] p-4">
-          <div className="max-w-7xl mx-auto h-full">
-            <div className="flex flex-col md:flex-row gap-6 h-full">
-              {/* Left: Webcam */}
-              <div className="flex-1 bg-gray-800 rounded-2xl overflow-hidden shadow-2xl min-h-0 relative">
-                <GestureDetector
-                  onGestureDetected={handleGestureDetected}
-                  isDetecting={true}
-                  currentGesture={
-                    showFilePickerButton ? "FILE_PICKER_ACTIVE" : currentGesture
-                  }
-                />
-              </div>
-
-              {/* Right: Gesture Controls */}
-              <div className="md:w-80 md:max-h-screen lg:w-[26rem] bg-gray-800 rounded-lg p-4 md:p-6 overflow-y-auto">
-                <div className="grid grid-cols-1 gap-4 text-base">
-                  <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
-                    <span className="text-2xl">☝️</span>
-                    <div>
-                      <p className="font-semibold text-base text-center">Point Up</p>
-                      <p className="text-gray-400 text-sm text-center">Show QR Code</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
-                    <span className="text-2xl">✊</span>
-                    <div>
-                      <p className="font-semibold text-base text-center">Fist</p>
-                      <p className="text-gray-400 text-sm text-center">Open File Menu</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-3 p-4 bg-gray-700 rounded-lg">
-                    <span className="text-2xl">✌️</span>
-                    <div>
-                      <p className="font-semibold text-base text-center">Peace Sign</p>
-                      <p className="text-gray-400 text-sm text-center">Send Selected File</p>
-                    </div>
-                  </div>
+        <div className="h-screen pt-14 sm:pt-16 lg:pt-20">
+          <div className="h-full p-2 sm:p-3 lg:p-4">
+            <div className="max-w-7xl mx-auto h-full">
+              <div className="flex flex-col lg:flex-row gap-2 sm:gap-3 lg:gap-6 h-full">
+                {/* Left: Webcam */}
+                <div className="flex-1 lg:flex-auto bg-gray-800 rounded-2xl overflow-hidden shadow-2xl min-h-[50vh] lg:min-h-0 relative">
+                  <GestureDetector
+                    onGestureDetected={handleGestureDetected}
+                    isDetecting={true}
+                    currentGesture={
+                      showFilePickerButton
+                        ? "FILE_PICKER_ACTIVE"
+                        : currentGesture
+                    }
+                  />
                 </div>
 
-                {/* Selected file thumbnail display */}
-                <div className="mt-6 p-2 bg-gray-700 rounded-lg">
-                  <div className="flex flex-col items-center justify-center">
-                    {selectedFile ? (
-                      <>
-                        <div className="flex justify-center w-48 h-48 md:w-56 md:h-56">
-                          {imageUrl ? (
-                            <img
-                              src={imageUrl}
-                              alt={selectedFile.name}
-                              className="w-full h-full rounded-lg object-contain border border-gray-600"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
-                              <span className="text-sm md:text-lg font-bold text-white">
-                                {selectedFile.name
-                                  .split(".")
-                                  .pop()
-                                  ?.toUpperCase()
-                                  .slice(0, 3) || "FILE"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="mt-3 text-center">
-                          <p className="text-xs text-gray-300 truncate max-w-48">
-                            {selectedFile.name}
-                          </p>
-                          <p className="text-xs text-green-400 font-medium mt-1">
-                            Ready to share
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <span className="text-gray-400 text-sm">
-                        No File Selected
-                      </span>
-                    )}
+                {/* Right: Gesture Controls */}
+                <div className="w-full lg:w-80 xl:w-[26rem] bg-gray-800 rounded-lg p-2.5 sm:p-3 lg:p-5 xl:p-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2 sm:gap-3 lg:gap-4 text-sm lg:text-base">
+                    <div className="flex items-center justify-center gap-2 lg:gap-3 p-3 lg:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-xl lg:text-2xl">☝️</span>
+                      <div>
+                        <p className="font-semibold text-sm lg:text-base text-center">
+                          Point Up
+                        </p>
+                        <p className="text-gray-400 text-xs lg:text-sm text-center">
+                          Show QR Code
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 lg:gap-3 p-3 lg:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-xl lg:text-2xl">✊</span>
+                      <div>
+                        <p className="font-semibold text-sm lg:text-base text-center">
+                          Fist
+                        </p>
+                        <p className="text-gray-400 text-xs lg:text-sm text-center">
+                          Open File Menu
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 lg:gap-3 p-3 lg:p-4 bg-gray-700 rounded-lg">
+                      <span className="text-xl lg:text-2xl">✌️</span>
+                      <div>
+                        <p className="font-semibold text-sm lg:text-base text-center">
+                          Peace Sign
+                        </p>
+                        <p className="text-gray-400 text-xs lg:text-sm text-center">
+                          Send Selected File
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Selected file thumbnail display */}
+                  <div className="mt-3 sm:mt-4 lg:mt-6 p-2 bg-gray-700 rounded-lg">
+                    <div className="flex flex-col items-center justify-center">
+                      {selectedFile ? (
+                        <>
+                          <div className="flex justify-center w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28">
+                            {imageUrl ? (
+                              <img
+                                src={imageUrl}
+                                alt={selectedFile.name}
+                                className="w-full h-full rounded-lg object-contain border border-gray-600"
+                              />
+                            ) : (
+                              <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-lg bg-gray-600 border border-gray-500 flex items-center justify-center">
+                                <span className="text-xs sm:text-sm font-bold text-white">
+                                  {selectedFile.name
+                                    .split(".")
+                                    .pop()
+                                    ?.toUpperCase()
+                                    .slice(0, 3) || "FILE"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="mt-2 text-center">
+                            <p className="text-xs text-gray-300 truncate max-w-32 sm:max-w-40">
+                              {selectedFile.name}
+                            </p>
+                            <p className="text-xs text-green-400 font-medium mt-1">
+                              Ready to share
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-gray-400 text-xs sm:text-sm">
+                          No File Selected
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

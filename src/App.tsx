@@ -33,12 +33,16 @@ function App() {
     try {
       // Skip camera pre-warming to avoid conflicts with GestureDetector
       // Let the GestureDetector handle camera initialization directly
-      console.log("Skipping camera pre-warming - letting GestureDetector handle it");
+      console.log(
+        "Skipping camera pre-warming - letting GestureDetector handle it",
+      );
       setInitializationProgress((prev) => ({ ...prev, camera: true }));
 
       // Skip MediaPipe pre-loading to avoid conflicts
       // Let the GestureDetector handle model loading
-      console.log("Skipping MediaPipe pre-loading - letting GestureDetector handle it");
+      console.log(
+        "Skipping MediaPipe pre-loading - letting GestureDetector handle it",
+      );
       setTimeout(() => {
         setInitializationProgress((prev) => ({ ...prev, handDetection: true }));
       }, 300);
@@ -168,7 +172,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="h-screen bg-gray-900">
       <DesktopView key="desktop-view" onFileSelect={handleFileSelect} />
     </div>
   );
