@@ -1,87 +1,13 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { GestureDetector } from "./GestureDetector";
 import { QRDisplay } from "./QRDisplay";
+import { Modal } from "./Modal";
+import { createNotification } from "../utils/notifications";
+import { NotificationDisplay } from "./NotificationDisplay";
+import { sendFile, createFileInput } from "../utils/fileTransfer";
+import { getConnectionUrl } from "../utils/network";
+import type { NotificationState, ConnectionStatus } from "../types";
 import * as Peer from "peerjs";
-
-interface FileStart {
-  type: "file-start";
-  fileId: string;
-  fileName: string;
-  fileSize: number;
-  fileType: string;
-}
-
-interface FileChunk {
-  type: "file-chunk";
-  fileId: string;
-  chunkIndex: number;
-  chunk: ArrayBuffer;
-}
-
-interface FileEnd {
-  type: "file-end";
-  fileId: string;
-}
-
-// Get connection URL for QR code (works in both local and production)
-const getConnectionUrl = async (): Promise<string> => {
-  const hostname = window.location.hostname;
-  const port = window.location.port || "5174";
-  const isProduction =
-    !hostname.includes("localhost") &&
-    !hostname.includes("127.0.0.1") &&
-    hostname !== "localhost";
-
-  if (isProduction) {
-    // In production, use the deployed domain
-    return `${window.location.protocol}//${hostname}${window.location.port ? `:${port}` : ""}`;
-  } else {
-    // In local development, try to get the local network IP
-    const localIP = await new Promise<string>((resolve) => {
-      try {
-        const pc = new RTCPeerConnection({
-          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-        });
-        pc.createDataChannel("");
-        pc.createOffer()
-          .then((offer) => pc.setLocalDescription(offer))
-          .then(() => {
-            setTimeout(() => {
-              const lines = pc.localDescription?.sdp?.split("\n") || [];
-              pc.close();
-
-              for (const line of lines) {
-                if (line.includes("candidate:") && line.includes("typ host")) {
-                  const match = line.match(/(\d+\.\d+\.\d+\.\d+)/);
-                  if (
-                    match &&
-                    !match[0].startsWith("127.") &&
-                    !match[0].startsWith("0.") &&
-                    !match[0].startsWith("169.254") // Exclude link-local addresses
-                  ) {
-                    resolve(match[0]);
-                    return;
-                  }
-                }
-              }
-              resolve("");
-            }, 2000);
-          })
-          .catch(() => resolve(""));
-      } catch {
-        resolve("");
-      }
-    });
-
-    // If we got a valid local IP, use it
-    if (localIP) {
-      return `http://${localIP}:${port}`;
-    }
-
-    // Fallback: use localhost for local development
-    return `http://localhost:${port}`;
-  }
-};
 
 // DesktopView component doesn't require any props
 
@@ -90,20 +16,19 @@ export const DesktopView: React.FC = React.memo(() => {
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<
-    "idle" | "connecting" | "connected"
-  >("idle");
+  const [connectionStatus, setConnectionStatus] =
+    useState<ConnectionStatus>("idle");
   const [connections, setConnections] = useState<
     Map<string, Peer.DataConnection>
   >(new Map());
   const [currentGesture, setCurrentGesture] = useState<string>("");
   const [currentHost, setCurrentHost] = useState<string>("");
   const [showQRModal, setShowQRModal] = useState(false);
-  const [notification, setNotification] = useState<{
-    type: "success" | "error";
-    message: string;
-    show: boolean;
-  }>({ type: "success", message: "", show: false });
+  const [notification, setNotification] = useState<NotificationState>({
+    type: "success",
+    message: "",
+    show: false,
+  });
 
   // Refs for accessing current state in callbacks
   const connectionStatusRef = useRef(connectionStatus);
@@ -245,34 +170,18 @@ export const DesktopView: React.FC = React.memo(() => {
     }
     setCountdown(0);
 
-    // Create and trigger file input immediately (user activated)
-    const fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.accept = "image/*,.pdf,.doc,.docx,.txt";
-    fileInput.style.position = "absolute";
-    fileInput.style.left = "-9999px";
-    fileInput.style.top = "-9999px";
-
-    fileInput.onchange = (event) => {
-      const files = (event.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        const file = files[0];
+    const fileInput = createFileInput(
+      (file) => {
         setSelectedFile(file);
-      }
-      document.body.removeChild(fileInput);
-      setShowFilePickerButton(false);
-      setCountdown(0);
-    };
+        setShowFilePickerButton(false);
+        setCountdown(0);
+      },
+      () => {
+        setShowFilePickerButton(false);
+        setCountdown(0);
+      },
+    );
 
-    fileInput.oncancel = () => {
-      document.body.removeChild(fileInput);
-      setShowFilePickerButton(false);
-      setCountdown(0);
-    };
-
-    document.body.appendChild(fileInput);
-
-    // This should work because it's triggered by a user click
     fileInput.click();
   }, []);
 
@@ -316,55 +225,14 @@ export const DesktopView: React.FC = React.memo(() => {
 
   const showNotification = useCallback(
     (type: "success" | "error", message: string) => {
-      setNotification({ type, message, show: true });
-      setTimeout(() => {
-        setNotification((prev) => ({ ...prev, show: false }));
-      }, 4000);
+      createNotification(setNotification, type, message);
     },
     [],
   );
 
-  const sendFile = useCallback(
+  const handleSendFile = useCallback(
     async (file: File, connection: Peer.DataConnection) => {
-      try {
-        const fileId = Date.now().toString();
-        const fileStart = {
-          type: "file-start",
-          fileId,
-          fileName: file.name,
-          fileSize: file.size,
-          fileType: file.type,
-        } as FileStart;
-        connection.send(fileStart);
-
-        const chunkSize = 16384;
-        const buffer = await file.arrayBuffer();
-        const totalChunks = Math.ceil(buffer.byteLength / chunkSize);
-
-        for (let i = 0; i < totalChunks; i++) {
-          const start = i * chunkSize;
-          const end = Math.min(start + chunkSize, buffer.byteLength);
-          const chunk = buffer.slice(start, end);
-
-          connection.send({
-            type: "file-chunk",
-            fileId,
-            chunkIndex: i,
-            chunk: chunk,
-          } as FileChunk);
-        }
-
-        connection.send({
-          type: "file-end",
-          fileId,
-        } as FileEnd);
-
-        // Show success notification
-        showNotification("success", `✅ ${file.name} sent successfully!`);
-      } catch (error) {
-        console.error("Failed to send file:", error);
-        showNotification("error", `❌ Failed to send ${file.name}`);
-      }
+      await sendFile(file, connection, showNotification);
     },
     [showNotification],
   );
@@ -394,116 +262,94 @@ export const DesktopView: React.FC = React.memo(() => {
           if (currentFile && currentConnections.size > 0) {
             const firstConnection = Array.from(currentConnections.values())[0];
             if (firstConnection) {
-              await sendFile(currentFile, firstConnection);
+              await handleSendFile(currentFile, firstConnection);
             }
           } else {
             if (!currentFile) {
-              setNotification({
-                type: "error",
-                message: "No file selected",
-                show: true,
-              });
+              showNotification("error", "No file selected");
             }
             if (currentConnections.size === 0) {
-              setNotification({
-                type: "error",
-                message: "No active connections",
-                show: true,
-              });
+              showNotification("error", "No active connections");
             }
           }
           break;
       }
     },
-    [sendFile, triggerFilePickerFlow],
+    [handleSendFile, triggerFilePickerFlow, showNotification],
   );
 
   return (
     <div className="h-screen bg-gray-900 text-white">
-      {/* QR Code - Centered modal matching website design */}
-      {showQRModal && connectionStatus !== "connected" && peerId && (
-        <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => setShowQRModal(false)}
-        >
-          <div
-            className="bg-gray-800 text-white p-4 sm:p-6 rounded-xl shadow-2xl border border-gray-700 max-w-xs w-full"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center">
-              <h3 className="text-base sm:text-lg font-semibold mb-3 font-display">
-                Connect Your Phone
-              </h3>
-              <QRDisplay
-                value={`${currentHost}/connect?peer=${peerId}`}
-                size={180}
-                title=""
-              />
-              <div className="mt-3">
-                <p className="text-gray-400 text-xs">
-                  📱 Scan this QR code with your phone
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                  Connect from anywhere, any network
-                </p>
-              </div>
-            </div>
+      {/* QR Code Modal */}
+      <Modal
+        isOpen={showQRModal && connectionStatus !== "connected" && !!peerId}
+        onClose={() => setShowQRModal(false)}
+      >
+        <div className="text-center">
+          <h3 className="text-base sm:text-lg font-semibold mb-3 font-display">
+            Connect Your Phone
+          </h3>
+          <QRDisplay
+            value={`${currentHost}/connect?peer=${peerId}`}
+            size={180}
+            title=""
+          />
+          <div className="mt-3">
+            <p className="text-gray-400 text-xs">
+              📱 Scan this QR code with your phone
+            </p>
+            <p className="text-gray-500 text-xs mt-1">
+              Connect from anywhere, any network
+            </p>
           </div>
         </div>
-      )}
+      </Modal>
 
-      {/* File Picker Button Overlay */}
-      {showFilePickerButton && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-          onClick={() => {
-            setShowFilePickerButton(false);
-            // Clear countdown when modal is closed by clicking outside
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current);
-              countdownIntervalRef.current = null;
-            }
-            setCountdown(0);
-          }}
-        >
-          <div
-            className="bg-gray-800 text-white p-4 sm:p-6 rounded-xl shadow-2xl border border-gray-700 max-w-sm w-full"
-            onClick={(e) => e.stopPropagation()}
+      {/* File Picker Modal */}
+      <Modal
+        isOpen={showFilePickerButton}
+        onClose={() => {
+          setShowFilePickerButton(false);
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setCountdown(0);
+        }}
+        className="z-50"
+      >
+        <div className="text-center">
+          <div className="text-2xl sm:text-3xl mb-3 sm:mb-4">✊</div>
+          <h3 className="text-base sm:text-lg font-semibold mb-2 font-display">
+            Fist Gesture Detected
+          </h3>
+          <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">
+            Click the button below to open the file selector
+          </p>
+          <button
+            onClick={openFilePickerDirectly}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
           >
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl mb-3 sm:mb-4">✊</div>
-              <h3 className="text-base sm:text-lg font-semibold mb-2 font-display">
-                Fist Gesture Detected
-              </h3>
-              <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base">
-                Click the button below to open the file selector
-              </p>
-              <button
-                onClick={openFilePickerDirectly}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 sm:py-3 px-4 sm:px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 text-sm sm:text-base"
-              >
-                <svg
-                  className="w-4 h-4 sm:w-5 sm:h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                Select File to Share
-              </button>
-              <p className="text-xs text-gray-500 mt-3">
-                This button will disappear in {countdown} seconds
-              </p>
-            </div>
-          </div>
+            <svg
+              className="w-4 h-4 sm:w-5 sm:h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            Select File to Share
+          </button>
+          <p className="text-xs text-gray-500 mt-3">
+            This button will disappear in {countdown} seconds
+          </p>
         </div>
-      )}
+      </Modal>
 
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-40 bg-gray-900/90 backdrop-blur p-2 sm:p-3 lg:p-4">
@@ -659,116 +505,11 @@ export const DesktopView: React.FC = React.memo(() => {
         </div>
       </div>
 
-      {/* Modern File Transfer Notification */}
-      {notification.show && (
-        <div
-          className={`fixed top-20 right-4 z-50 max-w-sm transform transition-all duration-300 ease-out animate-in slide-in-from-right-5 ${
-            notification.type === "success"
-              ? "bg-white/95 backdrop-blur-lg border-green-200 shadow-green-100"
-              : "bg-white/95 backdrop-blur-lg border-red-200 shadow-red-100"
-          } border-2 rounded-2xl shadow-2xl p-4`}
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className={`flex-shrink-0 rounded-full p-2 ${
-                notification.type === "success"
-                  ? "bg-green-100 text-green-600"
-                  : "bg-red-100 text-red-600"
-              }`}
-            >
-              {notification.type === "success" ? (
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className={`font-semibold text-sm font-display ${
-                  notification.type === "success"
-                    ? "text-green-800"
-                    : "text-red-800"
-                }`}
-              >
-                {notification.type === "success" ? "Success" : "Error"}
-              </p>
-              <p
-                className={`text-sm mt-1 ${
-                  notification.type === "success"
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                {notification.message}
-              </p>
-            </div>
-            <button
-              onClick={() =>
-                setNotification((prev) => ({ ...prev, show: false }))
-              }
-              className={`flex-shrink-0 rounded-full p-1 transition-colors ${
-                notification.type === "success"
-                  ? "hover:bg-green-100 text-green-400"
-                  : "hover:bg-red-100 text-red-400"
-              }`}
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Auto-dismiss indicator */}
-          <div
-            className={`mt-3 flex items-center gap-2 text-xs ${
-              notification.type === "success"
-                ? "text-green-600"
-                : "text-red-600"
-            }`}
-          >
-            <div
-              className={`w-1.5 h-1.5 rounded-full animate-pulse ${
-                notification.type === "success" ? "bg-green-500" : "bg-red-500"
-              }`}
-            />
-            <span>Auto-dismissing in 4 seconds</span>
-          </div>
-        </div>
-      )}
+      {/* Notification Display */}
+      <NotificationDisplay
+        notification={notification}
+        onClose={() => setNotification((prev) => ({ ...prev, show: false }))}
+      />
     </div>
   );
 });
