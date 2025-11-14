@@ -45,6 +45,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
     return null;
   };
   const [retryKey, setRetryKey] = useState(0); // Force re-initialization when changed
+  const isInitializedRef = useRef(false); // Track if already initialized
   const videoRef = useRef<HTMLVideoElement>(null);
   const handLandmarkerRef = useRef<HandLandmarker | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -167,6 +168,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   useEffect(() => {
     if (!isDetecting) {
       // Cleanup when detection is disabled
+      isInitializedRef.current = false;
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -178,6 +180,14 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      return;
+    }
+
+    // Prevent re-initialization if already done
+    if (isInitializedRef.current && streamRef.current) {
       return;
     }
 
@@ -190,7 +200,11 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
     handLandmarkerRef.current = null;
+    isInitializedRef.current = false;
 
     const initializeDetection = async () => {
       try {
@@ -351,6 +365,19 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
           );
         }
 
+        // Set up video element after getting stream
+        if (videoRef.current && streamRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+          videoRef.current.width = 640;
+          videoRef.current.height = 480;
+          try {
+            await videoRef.current.play();
+          } catch (error) {
+            console.warn("Video autoplay failed:", error);
+          }
+        }
+
+        isInitializedRef.current = true;
         setIsLoading(false);
 
         // Start processing frames with improved rate limiting and gesture stability
@@ -549,76 +576,22 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         cooldownIntervalRef.current = null;
       }
     };
-  }, [isDetecting, onGestureDetected, onHandDetected, retryKey]);
+  }, [isDetecting, retryKey]); // Remove onGestureDetected and onHandDetected to prevent re-initialization
 
   // Set up video stream when stream becomes available
   useEffect(() => {
-    let timeoutId: number | null = null;
+    const video = videoRef.current;
+    const stream = streamRef.current;
 
-    const setupVideo = () => {
-      const stream = streamRef.current;
-      const currentVideo = videoRef.current;
-
-      if (!stream || !currentVideo) {
-        return false; // Not ready yet
-      }
-
-      // Check if already set up
-      if (currentVideo.srcObject === stream) {
-        return true; // Already set up
-      }
-
-      // Set the stream to the video element
-      currentVideo.srcObject = stream;
-
-      // Set video dimensions to prevent MediaPipe warning
-      currentVideo.width = 640;
-      currentVideo.height = 480;
-
-      // Try to play the video
-      currentVideo.play().catch((error) => {
+    if (video && stream && isInitializedRef.current && !video.srcObject) {
+      video.srcObject = stream;
+      video.width = 640;
+      video.height = 480;
+      video.play().catch((error) => {
         console.warn("Video autoplay failed:", error);
       });
-
-      return true; // Setup complete
-    };
-
-    // Function to keep trying until setup is complete or timeout
-    const attemptSetup = () => {
-      if (setupVideo()) {
-        // Success, stop trying
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-      }
-    };
-
-    // Try immediately
-    attemptSetup();
-
-    // Keep trying every 100ms for up to 10 seconds
-    timeoutId = setTimeout(() => {
-      console.error("Video setup timeout after 10 seconds");
-    }, 10000);
-
-    const intervalId = setInterval(attemptSetup, 100);
-
-    return () => {
-      clearInterval(intervalId);
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      // Cleanup when component unmounts - capture ref value at cleanup time
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      const videoElement = videoRef.current;
-      if (videoElement?.srcObject) {
-        const currentStream = videoElement.srcObject as MediaStream;
-        currentStream.getTracks().forEach((track) => track.stop());
-        videoElement.srcObject = null;
-      }
-    };
-  }, []); // Empty dependency array - effect handles its own ref checking
+    }
+  }, [isLoading]); // Trigger when loading state changes
 
   if (error) {
     return (
@@ -700,9 +673,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         </div>
       </div>
 
-      {(!streamRef.current ||
-        !videoRef.current ||
-        videoRef.current.readyState < 2) && (
+      {!streamRef.current && !isLoading && (
         <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
           <p className="text-white text-sm">Waiting for camera stream...</p>
         </div>
