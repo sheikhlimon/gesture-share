@@ -8,27 +8,23 @@ interface GestureDetectorProps {
   ) => void;
   isDetecting: boolean;
   currentGesture?: string;
+  onHandDetected?: (detected: boolean) => void;
 }
 
 export const GestureDetector: React.FC<GestureDetectorProps> = ({
   onGestureDetected,
   isDetecting,
   currentGesture,
+  onHandDetected,
 }) => {
   // Internal pro tip component that shows when no cooldown is active
   const GestureTips: React.FC = () => {
     // Show pro tip when no hand is detected or hand is not in action gesture
-    // Show for: "" (no hand), "none", "OPEN_HAND", "PARTIAL"
-    // Hide for: POINT_UP, FIST, PEACE_SIGN (action gestures)
-    // Also hide when cooldown is active
-    // Also hide when file picker button is shown (passed via currentGesture prop)
+    // Show tip only when no hand is detected or gesture is none
     const shouldShowTip =
       !cooldownRemaining &&
       currentGesture !== "FILE_PICKER_ACTIVE" &&
-      (!currentGesture ||
-        currentGesture === "none" ||
-        currentGesture === "OPEN_HAND" ||
-        currentGesture === "PARTIAL");
+      (!handDetected || currentGesture === "none");
 
     if (shouldShowTip) {
       return (
@@ -302,7 +298,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         // Initialize HandLandmarker with tasks-vision using multiple CDN fallbacks
         let vision;
         let visionError: Error | null = null;
-        
+
         // Try different CDN URLs for better reliability
         const cdnUrls = [
           "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0/wasm",
@@ -333,36 +329,30 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
           // Try GPU delegation first, fallback to CPU
           let handLandmarker;
           try {
-            handLandmarker = await HandLandmarker.createFromOptions(
-              vision,
-              {
-                baseOptions: {
-                  delegate: "GPU",
-                  modelAssetPath:
-                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                },
-                runningMode: "VIDEO",
-                numHands: 1,
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+              baseOptions: {
+                delegate: "GPU",
+                modelAssetPath:
+                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
               },
-            );
+              runningMode: "VIDEO",
+              numHands: 1,
+            });
             console.log("HandLandmarker created with GPU delegation");
           } catch (gpuError) {
             console.warn("GPU delegation failed, trying CPU:", gpuError);
-            handLandmarker = await HandLandmarker.createFromOptions(
-              vision,
-              {
-                baseOptions: {
-                  delegate: "CPU",
-                  modelAssetPath:
-                    "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
-                },
-                runningMode: "VIDEO",
-                numHands: 1,
+            handLandmarker = await HandLandmarker.createFromOptions(vision, {
+              baseOptions: {
+                delegate: "CPU",
+                modelAssetPath:
+                  "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
               },
-            );
+              runningMode: "VIDEO",
+              numHands: 1,
+            });
             console.log("HandLandmarker created with CPU delegation");
           }
-          
+
           handLandmarkerRef.current = handLandmarker;
         } catch (mpError) {
           console.error("HandLandmarker creation failed:", mpError);
@@ -411,6 +401,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               gestureCountRef.current.clear();
               stableGestureRef.current = "none";
               setHandDetected(false);
+              onHandDetected?.(false);
               setDebugGesture("none");
               setConfidence(0);
 
@@ -425,8 +416,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
               // Update debug state
               setHandDetected(true);
+              onHandDetected?.(true);
               setDebugGesture(gesture);
-              
+
               // Calculate confidence based on gesture consistency
               const currentCount = gestureCountRef.current.get(gesture) || 0;
               const confidenceScore = Math.min(currentCount / 3, 1); // Max confidence at 3 consistent detections
@@ -579,36 +571,39 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
   // Set up video stream when stream becomes available
   useEffect(() => {
     let timeoutId: number | null = null;
-    
+
     const setupVideo = () => {
       const stream = streamRef.current;
       const currentVideo = videoRef.current;
-      
+
       if (!stream || !currentVideo) {
         return false; // Not ready yet
       }
-      
+
       // Check if already set up
       if (currentVideo.srcObject === stream) {
         return true; // Already set up
       }
-      
+
       console.log("Setting up video stream");
-      
+
       // Set the stream to the video element
       currentVideo.srcObject = stream;
-      
+
       // Set video dimensions to prevent MediaPipe warning
       currentVideo.width = 640;
       currentVideo.height = 480;
-      
+
       // Try to play the video
-      currentVideo.play().then(() => {
-        console.log("Video playback started successfully");
-      }).catch((error) => {
-        console.warn("Video autoplay failed:", error);
-      });
-      
+      currentVideo
+        .play()
+        .then(() => {
+          console.log("Video playback started successfully");
+        })
+        .catch((error) => {
+          console.warn("Video autoplay failed:", error);
+        });
+
       return true; // Setup complete
     };
 
@@ -710,19 +705,20 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         muted
         playsInline
         className="w-full h-full object-cover rounded-lg bg-black transform scale-x-[-1]"
-        
       />
-      
+
       {/* Debug overlay - shows detection status */}
       <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20">
         <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${handDetected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+          <div
+            className={`w-2 h-2 rounded-full ${handDetected ? "bg-green-500" : "bg-red-500"}`}
+          ></div>
           <span className="text-white text-xs">
-            {handDetected ? 'Hand Detected' : 'No Hand'}
+            {handDetected ? "Hand Detected" : "No Hand"}
           </span>
           {handDetected && (
             <span className="text-white text-xs">
-              | {debugGesture.replace('_', ' ')} ({confidence}%)
+              | {debugGesture.replace("_", " ")} ({confidence}%)
             </span>
           )}
         </div>

@@ -570,6 +570,10 @@ export const DesktopView: React.FC<DesktopViewProps> = React.memo(
                         ? "FILE_PICKER_ACTIVE"
                         : currentGesture
                     }
+                    onHandDetected={() => {
+                      // We don't need to do anything with this state
+                      // The GestureDetector component handles showing/hiding the tips internally
+                    }}
                   />
                 </div>
 
