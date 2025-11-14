@@ -201,10 +201,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         while (!stream && retryCount < maxRetries) {
           try {
-            console.log(
-              `Attempting to get camera access (attempt ${retryCount + 1}/${maxRetries})`,
-            );
-
             // Get camera stream with permissive fallback constraints
             stream = await navigator.mediaDevices.getUserMedia({
               video:
@@ -223,7 +219,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               audio: false,
             });
 
-            console.log("Camera access granted successfully");
             break;
           } catch (mediaError: unknown) {
             console.warn(
@@ -258,7 +253,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             ) {
               // Camera is already in use
               if (retryCount < maxRetries - 1) {
-                console.log("Camera in use, retrying after delay...");
                 await new Promise((resolve) =>
                   setTimeout(resolve, 1000 * (retryCount + 1)),
                 );
@@ -274,7 +268,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
             } else {
               // Other errors - retry
               if (retryCount < maxRetries - 1) {
-                console.log("Retrying camera access after error...");
                 await new Promise((resolve) =>
                   setTimeout(resolve, 1000 * (retryCount + 1)),
                 );
@@ -308,9 +301,8 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
 
         for (const cdnUrl of cdnUrls) {
           try {
-            console.log(`Trying MediaPipe CDN: ${cdnUrl}`);
             vision = await FilesetResolver.forVisionTasks(cdnUrl);
-            console.log("MediaPipe CDN loaded successfully");
+
             visionError = null;
             break;
           } catch (error) {
@@ -338,7 +330,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               runningMode: "VIDEO",
               numHands: 1,
             });
-            console.log("HandLandmarker created with GPU delegation");
           } catch (gpuError) {
             console.warn("GPU delegation failed, trying CPU:", gpuError);
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
@@ -350,7 +341,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
               runningMode: "VIDEO",
               numHands: 1,
             });
-            console.log("HandLandmarker created with CPU delegation");
           }
 
           handLandmarkerRef.current = handLandmarker;
@@ -510,10 +500,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                       return prev - 1;
                     });
                   }, 1000);
-
-                  console.log(
-                    `Gesture "${newStableGesture}" detected. Cooldown activated for ${gestureCooldownRef.current}ms`,
-                  );
                 } else {
                   // Main gesture detected but cooldown is active
                   const remainingTime = Math.ceil(
@@ -522,9 +508,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
                   if (remainingTime > 0) {
                     setCooldownRemaining(remainingTime);
                   }
-                  console.log(
-                    `Gesture "${newStableGesture}" detected but cooldown active (${remainingTime}s remaining)`,
-                  );
                 }
               }
             }
@@ -585,8 +568,6 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         return true; // Already set up
       }
 
-      console.log("Setting up video stream");
-
       // Set the stream to the video element
       currentVideo.srcObject = stream;
 
@@ -595,14 +576,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
       currentVideo.height = 480;
 
       // Try to play the video
-      currentVideo
-        .play()
-        .then(() => {
-          console.log("Video playback started successfully");
-        })
-        .catch((error) => {
-          console.warn("Video autoplay failed:", error);
-        });
+      currentVideo.play().catch((error) => {
+        console.warn("Video autoplay failed:", error);
+      });
 
       return true; // Setup complete
     };
@@ -724,7 +700,9 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         </div>
       </div>
 
-      {!streamRef.current && (
+      {(!streamRef.current ||
+        !videoRef.current ||
+        videoRef.current.readyState < 2) && (
         <div className="absolute inset-0 bg-gray-900 flex items-center justify-center">
           <p className="text-white text-sm">Waiting for camera stream...</p>
         </div>

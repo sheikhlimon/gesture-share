@@ -222,7 +222,6 @@ export const DesktopView: React.FC = React.memo(() => {
       });
 
       return () => {
-        console.log("Cleaning up PeerJS connection...");
         if (peerRef.current) {
           peerRef.current.destroy();
           peerRef.current = null;
@@ -266,7 +265,6 @@ export const DesktopView: React.FC = React.memo(() => {
     };
 
     fileInput.oncancel = () => {
-      console.log("File picker cancelled");
       document.body.removeChild(fileInput);
       setShowFilePickerButton(false);
       setCountdown(0);
@@ -400,10 +398,18 @@ export const DesktopView: React.FC = React.memo(() => {
             }
           } else {
             if (!currentFile) {
-              console.log("ERROR: No file selected");
+              setNotification({
+                type: "error",
+                message: "No file selected",
+                show: true,
+              });
             }
             if (currentConnections.size === 0) {
-              console.log("ERROR: No active connections");
+              setNotification({
+                type: "error",
+                message: "No active connections",
+                show: true,
+              });
             }
           }
           break;

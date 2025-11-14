@@ -57,10 +57,8 @@ export const MobileView: React.FC<MobileViewProps> = ({
 
   const connectToDesktop = useCallback(
     async (desktopPeerId: string) => {
-      console.log("Mobile connecting to desktop:", desktopPeerId);
       // Only connect if this mobile view is actually visible
       if (document.hidden) {
-        console.log("Mobile view is hidden, skipping connection");
         return;
       }
       try {
@@ -95,20 +93,12 @@ export const MobileView: React.FC<MobileViewProps> = ({
           },
         });
 
-        mobilePeer.on("open", (id) => {
-          console.log(
-            "Mobile peer ID:",
-            id,
-            "connecting to desktop:",
-            desktopPeerId,
-          );
-
+        mobilePeer.on("open", () => {
           const conn = mobilePeer.connect(desktopPeerId, {
             reliable: true,
           });
 
           conn.on("open", () => {
-            console.log("Mobile connection opened successfully");
             setConnectionStatus("connected");
             onConnectionEstablished?.();
           });
@@ -118,15 +108,11 @@ export const MobileView: React.FC<MobileViewProps> = ({
             setConnectionStatus("idle");
           });
 
-          conn.on("close", () => {
-            console.log("Mobile connection closed");
-          });
+          conn.on("close", () => {});
 
           conn.on("data", (data: unknown) => {
-            console.log("Mobile received data:", data);
             const fileTransferData = data as FileChunk | FileStart | FileEnd;
             if (fileTransferData.type === "file-start") {
-              console.log("File start received:", fileTransferData.fileName);
               setFileReceivingStatus(`Receiving: ${fileTransferData.fileName}`);
               onFileReceived?.(
                 fileTransferData.fileName || "Unknown",

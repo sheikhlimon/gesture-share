@@ -29,16 +29,10 @@ function App() {
     try {
       // Skip camera pre-warming to avoid conflicts with GestureDetector
       // Let the GestureDetector handle camera initialization directly
-      console.log(
-        "Skipping camera pre-warming - letting GestureDetector handle it",
-      );
       setInitializationProgress((prev) => ({ ...prev, camera: true }));
 
       // Skip MediaPipe pre-loading to avoid conflicts
       // Let the GestureDetector handle model loading
-      console.log(
-        "Skipping MediaPipe pre-loading - letting GestureDetector handle it",
-      );
       setTimeout(() => {
         setInitializationProgress((prev) => ({ ...prev, handDetection: true }));
       }, 300);
@@ -54,19 +48,11 @@ function App() {
 
   // Check if URL has peer parameter - if so, force mobile view
   useEffect(() => {
-    // Debug logging
-    console.log("Current URL:", window.location.href);
-    console.log("URL search:", window.location.search);
-
     const urlParams = new URLSearchParams(window.location.search);
     const hasPeerParam = urlParams.has("peer");
     const peerParam = urlParams.get("peer");
 
-    console.log("Has peer param:", hasPeerParam);
-    console.log("Peer param value:", peerParam);
-
     if (hasPeerParam && peerParam) {
-      console.log("QR parameter detected, forcing mobile view");
       setIsMobile(true);
       setIsLoading(false); // Skip loading for QR connections
       setInitializationProgress({
@@ -78,7 +64,6 @@ function App() {
     }
 
     // Normal device detection for desktop usage
-    console.log("No QR parameter, doing normal device detection");
     detectDevice();
     initializeCameraAndDetection();
   }, [detectDevice, initializeCameraAndDetection]);
