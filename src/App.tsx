@@ -11,10 +11,6 @@ function App() {
     deviceDetection: false,
   });
 
-  const handleFileSelect = useCallback((file: File) => {
-    console.log("File selected for sharing:", file.name);
-  }, []);
-
   const detectDevice = useCallback(() => {
     const userAgent = navigator.userAgent.toLowerCase();
     // Prioritize user agent detection - check for mobile browsers
@@ -173,7 +169,7 @@ function App() {
 
   return (
     <div className="h-screen bg-gray-900">
-      <DesktopView key="desktop-view" onFileSelect={handleFileSelect} />
+      <DesktopView key="desktop-view" />
     </div>
   );
 }

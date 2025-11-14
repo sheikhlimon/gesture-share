@@ -566,7 +566,7 @@ export const GestureDetector: React.FC<GestureDetectorProps> = ({
         cooldownIntervalRef.current = null;
       }
     };
-  }, [isDetecting, onGestureDetected, retryKey]);
+  }, [isDetecting, onGestureDetected, onHandDetected, retryKey]);
 
   // Set up video stream when stream becomes available
   useEffect(() => {
