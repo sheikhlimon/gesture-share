@@ -149,6 +149,15 @@ The gesture recognition system uses MediaPipe's advanced computer vision to:
 - **CPU Usage**: ~5-15% during normal operation
 - **Memory Usage**: ~50-100MB depending on file size
 
+## 🏆 Hackathon Achievement
+
+- **Event**: No Keyboards Allowed (hosted by CodeTV x goose)
+- **Result**: 🥈 2nd Place
+- **Category**: Solo Project
+- **Built with**: goose AI Agent
+- **Challenge**: Create an application without keyboard/mouse input using AI subagents
+- **Submission**: October - November 2025
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
